@@ -1,14 +1,8 @@
 import sys
-import json
-import uuid
 import time
 from datetime import datetime
 import telegram
-import concurrent.futures  # 이 부분을 추가해주세요.
 import psycopg2
-#from psycopg2 import pool
-import threading
-import copy
 from dataclasses import dataclass
 
 
@@ -33,40 +27,20 @@ class MyApi:
             'krw_price': 0.0
         }
 
+        UpToBit_fee: float = 0.0
+        BitToUp_fee: float = 0.0
+        trash_coin: float = 0.0
+
         BitToUp_diff: float = 0.0
         UpToBit_diff: float = 0.0
 
         BitToUp_diff2: float = 0.0
         UpToBit_diff2: float = 0.0
-
-        buy_price: float = 0.0
-        buy_amount: float = 0.0
-        buy_req_amount: float = 0.0
-
-        sell_price: float = 0.0
-        sell_last_price: float = 0.0
-        sell_amount: float = 0.0
-
-        buy_extra_sell1: float = 0.0
-        buy_extra_sell1_amount: float = 0.0
-        sell_extra_sell1: float = 0.0
-        sell_extra_sell1_amount: float = 0.0
-
-        estimated_sell_price: float = 0.0
-        estimated_diff: float = 0.0
-        sub_diff: float = 0.0
-
-
-        UpToBit_fee: float = 0.0
-        BitToUp_fee: float = 0.0
-
-        bit_fee: float = 0.0004
-        up_fee: float = 0.0005
-        total_today: float = 0.0
-        isChange: int = 1
-        success_time: datetime = datetime(1, 1, 1, second=0)
         trash_coin: float = 0.0
-        remaining_amount:float = 0.0
+
+        total_today: float = 0.0
+        
+        
 
         def __getitem__(self, key):
             if key not in ['bit', 'up']:
@@ -170,6 +144,31 @@ class MyApi:
         except Exception as e:
             print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]insertCoin 오류 발생: {e}, sql:{sql}")
         #self.connection.commit()
+
+    def insertTradeInfo(self, market, trade_info):     
+
+        sql = """
+            INSERT INTO tradeinfo (
+                memid, coin, buy_market, b_price, s_price, 
+                b_req_amount, b_amount, b_remaining_amount, 
+                s_req_amount, s_amount, s_remaining_amount, 
+                thread_id, b_order_id, s_order_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+
+        values = (
+            self.userinfo.memid, self.coin, market, 
+            trade_info.buy_price, trade_info.sell_price,
+            trade_info.buy_req_amount, trade_info.bought_amount, trade_info.buy_remaining_amount,
+            trade_info.sell_amount, trade_info.sold_amount, trade_info.sell_remaining_amount,
+            trade_info.thread_id,  
+            trade_info.buy_id, trade_info.sell_id
+        )
+
+        try :
+            self.cur.execute(sql, values)
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]insertTradeInfo 오류 발생: {e}, sql:{sql}")
 
     def updateTodayKrw(self, todaykrw):
         while(True):    
@@ -336,39 +335,52 @@ class MyApi:
         return (int(value * 10**count) / 10**count)   
 
 
-    async def info_message(self, market, thread_id, coin, cp_trade_info, order_id):
+    async def info_message(self, market, RealTime_coin, trade_info, order_id):
            
         bot = telegram.Bot(token=self.settings.telegram)
         chat_id = '6380176264'
         
-        buy_order_id = cp_trade_info.buy_id
-        buy_price = self.cutFloat(cp_trade_info.buy_price,2)        
-        buy_amount = cp_trade_info.buy_amount
-        bought_amount = self.cutFloat(cp_trade_info.bought_amount,8)
-        buy_remaining_amount = cp_trade_info.buy_remaining_amount
+        buy_order_id = trade_info.buy_id
+        buy_price = self.cutFloat(trade_info.buy_price,2)        
+        buy_amount = trade_info.buy_amount
+        bought_amount = self.cutFloat(trade_info.bought_amount,8)
+        buy_remaining_amount = trade_info.buy_remaining_amount
         
-        sell_price = self.cutFloat(cp_trade_info.sell_price,2)
-        sold_amount = self.cutFloat(cp_trade_info.sold_amount,8)
-        sell_remaining_amount = self.cutFloat(cp_trade_info.sell_remaining_amount,8)
+        # sell_price는 매수 신청시 예상 판매금액, 실제 판매 된 금액은 sold_price
+        sell_price = self.cutFloat(trade_info.sell_price,2)
+        sold_price = self.cutFloat(trade_info.sold_price,2)
+        sold_amount = self.cutFloat(trade_info.sold_amount,8)
+        sell_remaining_amount = self.cutFloat(trade_info.sell_remaining_amount,8)
+        thread_id = trade_info.thread_id
 
-        fee = self.cutFloat(sell_price * self.settings.bit_fee,5) + self.cutFloat(buy_price * self.settings.up_fee,5)
-        diff = self.cutFloat(sell_price - buy_price,3)
+        if market == 'bit':
+            buy_fee = self.settings.bit_fee
+            sell_fee = self.settings.up_fee
+        else:
+            buy_fee = self.settings.up_fee
+            sell_fee = self.settings.bit_fee
+
+        fee = self.cutFloat(trade_info * sell_fee,5) + self.cutFloat(buy_price * buy_fee,5)
+        diff = self.cutFloat(sold_price - buy_price,3)
         money = self.cutFloat(diff - fee,3)
-        # 진입시의 예상 차익이니까 coin.sell_price
-        estimated_diff = coin.sell_price - buy_price
+        
+        # sell_price는 매수 신청시 예상 판매금액, 실제 판매 된 금액은 sold_price
+        estimated_diff = sell_price - buy_price
+
         # 대기 메시지가 왔을 때 넣은 차익. 이게 원래 차익이어야 하는데, 판매하면서 가격이 떨어지면 diff가 낮아짐.
-        sub_diff = coin.sell_last_price - coin.buy_price
         got_money = self.cutFloat(money*sold_amount,2)
 
-        bit_coin = coin['bit']['coin_amount']
-        bit_krw = coin['bit']['krw_price']
-        up_coin = coin['up']['coin_amount']
-        up_krw = coin['up']['krw_price']
+        bit_coin = RealTime_coin['bit']['coin_amount']
+        bit_krw = RealTime_coin['bit']['krw_price']
+        up_coin = RealTime_coin['up']['coin_amount']
+        up_krw = RealTime_coin['up']['krw_price']
 
 
         self.updateTodayKrw(got_money)
-        log_str = f"[{thread_id}]차익발생,{market},수익:{got_money},차액:{money}({diff})매수:{bought_amount},매도:{sold_amount},수수료:{fee}, 매도량:[{sold_amount}/{bought_amount}],총 수익:{self.coinSet.total_today}, bit_coin_amount:{coin['bit']['coin_amount']},bit_coin_amount:{coin['bit']['coin_amount']},total_kwr:{int(bit_krw+up_krw)}, bit:{int(bit_krw)}, up:{int(up_krw)}, mode:{coin.isChange}"
+        log_str = f"[{thread_id}]차익발생,{market},수익:{got_money},차액:{money}({diff})매수:{bought_amount},매도:{sold_amount},수수료:{fee}, 매도량:[{sold_amount}/{bought_amount}],총 수익:{self.coinSet.total_today}, bit_coin_amount:{RealTime_coin['bit']['coin_amount']},bit_coin_amount:{RealTime_coin['bit']['coin_amount']},total_kwr:{int(bit_krw+up_krw)}, bit:{int(bit_krw)}, up:{int(up_krw)}, mode:{trade_info.isChange}"
         self.insertLog(log_str,thread_id,"차익발생")
+
+        self.insertTradeInfo(market, trade_info)
 
         
         direction = "업비트->빗썸" if market=='up' else "빗썸->업비트"
@@ -377,9 +389,9 @@ class MyApi:
 
         text = f"{self.coin}({direction}) 수익:{got_money:9.2f}원\n"
         text += f"실차액:{money:3.3f}원, 수수료:{fee:3.3f}원\n"
-        text += f"매도:{sold_amount:6.2f}개, 차액:{diff:3.3f}원({sub_diff:3.3f}원){estimated_diff:3.3f}원\n"
+        text += f"매도:{sold_amount:6.2f}개, 차액:{diff:3.3f}원({estimated_diff:3.3f}원)\n"
         text += f"매수:{bought_amount:6.2f}개, 신청{buy_amount}개(남음:{buy_remaining_amount:6.2f}개)\n"
-        text += f"{sell_exchange}매도:{sell_price:9.2f}원\[{coin.estimated_sell_price:9.2f}원]\n"
+        text += f"{sell_exchange}매도:{sold_price:9.2f}원\[{sell_price:9.2f}원]\n"
         text += f"{buy_exchange}매수:{buy_price:9.2f}원\n"
 
         text += f"\[빗썸] 코인:{bit_coin:8.2f} 현금:{bit_krw:9.2f}원\n"
@@ -387,14 +399,14 @@ class MyApi:
         text += f"\[총합] 코인:{bit_coin + up_coin:8.2f} 현금:{bit_krw + up_krw:9.2f}원\n"
         text += f"오늘 수익 : {self.coinSet.total_today:8.2f}\n"
         
-        if coin.isChange == 0 :
+        if trade_info.isChange == 0 :
             text = text + "일반모드"
-        elif coin.isChange == 1 :    
+        elif trade_info.isChange == 1 :    
             text = text + "리스크모드"
         else :
             text = text + "퀵모드"
         
-        text = text + f"\[" + coin.success_time.strftime("%H:%M:%S.%f")[:-3] + "]"
+        text = text + f"\[" + trade_info.success_time.strftime("%H:%M:%S.%f")[:-3] + "]"
         text = text + "[{:5d}]\n".format(thread_id)
         text = text + f"매수:{order_id}\n"
         text = text + f"매도:{buy_order_id}" 
