@@ -1,7 +1,7 @@
 import websocket  # websocket-client
 import threading
 from datetime import datetime
-
+import traceback
 
 class wsClass(threading.Thread):  
 
@@ -38,10 +38,10 @@ class wsClass(threading.Thread):
 
     def on_error(self,ws,err):
         self.reconnect_needed = True
-        log_str = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}]wsClass,error1,{self.coin},{self.mode},{err}"
+        error_trace = traceback.format_exc()
+        log_str = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}]wsClass,error1,{self.coin},{self.mode},{err}\n{error_trace}"
         print(log_str)
-
-    
+   
 
     def on_close(self,ws, status_code, msg):
         self.reconnect_needed = True

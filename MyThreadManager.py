@@ -15,8 +15,8 @@ class MyThreadManager:
         buy_remaining_amount: float = 0
         trade_count: int = 0
         sell_id: str = ""
-        sell_amount: float = 0
         sell_price: float = 0
+        sell_amount: float = 0
         sold_price: float = 0
         sold_amount: float = 0
         sell_remaining_amount: float = 0
@@ -68,13 +68,13 @@ class MyThreadManager:
             
             return thread_id
     
-    def add_trade(self, buy_id,buy_amount, buy_price, buy_remaining_amount, estimated_diff, mode, trade_count):
+    def add_trade(self, buy_id,buy_amount, buy_price, buy_remaining_amount, sell_price, mode, trade_count):
         add_trade = self.trade_info()
         add_trade.buy_id = buy_id
         add_trade.buy_amount = self.cutFloat(buy_amount,8)
         add_trade.buy_price = self.cutFloat(buy_price,2)
         add_trade.buy_remaining_amount = self.cutFloat(buy_remaining_amount,8)
-        add_trade.estimated_diff = self.cutFloat(estimated_diff,5)
+        add_trade.sell_price = self.cutFloat(sell_price,2)
         add_trade.isChange = mode
         add_trade.trade_count = int(trade_count)
 
@@ -82,15 +82,16 @@ class MyThreadManager:
 
         return add_trade
 
-    def get_trade(self,buy_id):
-        if buy_id in self.trade_list:
-            res = self.trade_list[buy_id]
+    def get_trade(self,order_id):
+        if order_id in self.trade_list:
+            res = self.trade_list[order_id]
         else:
             res = None
-
         return res
-        
-
+    
+    def del_trade(self,order_id):
+        if order_id in self.trade_list:
+            del self.trade_list[order_id]
     
     def _run_task(self, task, market, thread_id, order_id, stop_event):
         try:
@@ -135,10 +136,10 @@ class MyThreadManager:
             self.orderbook_event.set()
             self.futures[order_id].result()  # 스레드 완료 대기
             with self.lock:
+                self.del_trade(order_id)
                 self.active_thread_count -= 1
                 del self.stop_events[order_id]
                 del self.futures[order_id]
-                del self.trade_list[order_id]
             print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}] 666666666666666 [MyApi]stop_threads 종료 {order_id}")
         else:
             print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][MyApi]stop_threads {order_id} 못찾음.")
@@ -150,6 +151,8 @@ class MyThreadManager:
         futures_copy = list(self.futures.values())
         for future in futures_copy:
             self.orderbook_event.set()
+        
+        for future in futures_copy:
             future.result()  # 모든 스레드 완료 대기
             self.active_thread_count -= 1
             print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{self.active_thread_count}][MyApi]stop_all_threads")

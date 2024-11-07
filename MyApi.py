@@ -3,7 +3,8 @@ import time
 from datetime import datetime
 import telegram
 import psycopg2
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Dict, Any
 
 
 class MyApi:
@@ -26,21 +27,31 @@ class MyApi:
             'coin_amount': 0.0,
             'krw_price': 0.0
         }
+        # bit: Dict[str, Any] = field(default_factory=lambda: {
+        # 'buy': [0.0] * 5,
+        # 'sell': [0.0] * 1,
+        # 'buy_amount': [0.0] * 5,
+        # 'sell_amount': [0.0] * 1,
+        # 'coin_amount': 0.0,
+        # 'krw_price': 0.0
+        # })
+        # up: Dict[str, Any] = field(default_factory=lambda: {
+        #     'buy': [0.0] * 5,
+        #     'sell': [0.0] * 1,
+        #     'buy_amount': [0.0] * 5,
+        #     'sell_amount': [0.0] * 1,
+        #     'coin_amount': 0.0,
+        #     'krw_price': 0.0
+        # })
 
         UpToBit_fee: float = 0.0
         BitToUp_fee: float = 0.0
-        trash_coin: float = 0.0
 
         BitToUp_diff: float = 0.0
         UpToBit_diff: float = 0.0
 
         BitToUp_diff2: float = 0.0
-        UpToBit_diff2: float = 0.0
-        trash_coin: float = 0.0
-
-        total_today: float = 0.0
-        
-        
+        UpToBit_diff2: float = 0.0    
 
         def __getitem__(self, key):
             if key not in ['bit', 'up']:
@@ -100,13 +111,9 @@ class MyApi:
 
         self.load_userinfo(memid)
         self.load_settings()
-        self.trad_match = {}
-
         
         self.err_log_str = ""
         
-    
-
     def insertLog(self, log, thread_id=-1, type_data="info",mode=""):
         sql = "INSERT INTO datalog (memid, coin, log, thread_id, type) VALUES (%s,%s,%s,%s,%s)"
         if mode == 'bit':
@@ -145,73 +152,56 @@ class MyApi:
             print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]insertCoin 오류 발생: {e}, sql:{sql}")
         #self.connection.commit()
 
-    def insertTradeInfo(self, market, trade_info):     
+    def insertTradeInfo(self, market, trade_info, buy_fee, sell_fee):     
 
         sql = """
             INSERT INTO tradeinfo (
                 memid, coin, buy_market, b_price, s_price, 
                 b_req_amount, b_amount, b_remaining_amount, 
                 s_req_amount, s_amount, s_remaining_amount, 
-                thread_id, b_order_id, s_order_id
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                thread_id, b_order_id, s_order_id, buy_fee, sell_fee, mode
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
         values = (
             self.userinfo.memid, self.coin, market, 
-            trade_info.buy_price, trade_info.sell_price,
-            trade_info.buy_req_amount, trade_info.bought_amount, trade_info.buy_remaining_amount,
+            trade_info.buy_price, trade_info.sold_price,
+            trade_info.buy_amount, trade_info.bought_amount, trade_info.buy_remaining_amount,
             trade_info.sell_amount, trade_info.sold_amount, trade_info.sell_remaining_amount,
             trade_info.thread_id,  
-            trade_info.buy_id, trade_info.sell_id
+            trade_info.buy_id, trade_info.sell_id, buy_fee, sell_fee, trade_info.isChange
         )
 
         try :
             self.cur.execute(sql, values)
         except Exception as e:
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]insertTradeInfo 오류 발생: {e}, sql:{sql}")
+            log_str =  f"[{trade_info.thread_id}]error insertTradeInfo 오류 발생: {e}, sql:{sql}"
+            self.insertLog(log_str)
+            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
 
-    def updateTodayKrw(self, todaykrw):
-        while(True):    
-            # 오늘 날짜 구하기
-            today = datetime.now().date()
 
-            # SQL 쿼리 작성
-            sql = f"SELECT memid, coin, todaykrw FROM todaykrw WHERE memid = {self.userinfo.memid} AND coin = '{self.coin}' and DATE(created_at) = '{today}'"
-            # 쿼리 실행 및 결과 가져오기
-            try :
-                self.cur.execute(sql)
-            except Exception as e:
-                print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]updateTodayKrw 오류 발생1: {e}, sql:{sql}")
-            
-            # 원래 쿼리 결과가 없을 수 있음. 날이 바뀌면 새로 만들거니까
-            # loadsettings처럼 카운트 0 을 여기다 넣으면 안됨.
-            try:
-                # 결과 가져오기
-                results = self.cur.fetchone()
-                #print(results)
-                if results is None:
-                    sql = "INSERT INTO todaykrw(memid, market, coin, todaykrw) values (%s,%s,%s,%s)"
-                    values = (self.userinfo.memid,'test',self.coin,todaykrw)
-                    
-                else:
-                    self.coinSet.total_today = todaykrw + float(results[2])
-                    sql = "UPDATE todaykrw SET todaykrw = %s WHERE memid = %s AND coin = %s and  DATE(created_at) = '{today}'"
-                    values = (self.coinSet.total_today,results[0],results[1])
+        sql = f"SELECT memid, coin, SUM(money) AS total_money FROM public.tradeinfo_view WHERE memid = {self.userinfo.memid} AND coin = '{self.coin}' AND DATE(created_at) = CURRENT_DATE GROUP BY memid, coin"
 
-                try :
-                    self.cur.execute(sql, values)
-                except Exception as e:
-                    print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]updateTodayKrw 오류 발생2: {e}, sql:{sql}")
-                #self.connection.commit()
-                break
-            except Exception as e:
-                    log_str = f'[{datetime.now().strftime("%H:%M:%S.%f")[:-3]}]error updateTodayKrw Query execution error: {e}'
-                    self.insertLog(log_str)
-                    print(log_str)
-            
-            time.sleep(1)
-                
-                
+        try :
+            self.cur.execute(sql)
+        except Exception as e:
+            log_str = f"[{trade_info.thread_id}]error insertTradeInfo  View get total_today 오류 발생1: {e}, sql:{sql}"
+            self.insertLog(log_str)
+            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
+
+        try :
+            results = self.cur.fetchone()
+            if results is None:
+                log_str = f"[{trade_info.thread_id}]error insertTradeInfo  View None : sql:{sql}"
+                self.insertLog(log_str)
+                print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
+            else:
+                return (float(results[2]))
+
+        except Exception as e:
+            log_str = f'[{trade_info.thread_id}]error insertTradeInfo  View get total_today 오류 발생2 results:{results}, sql:{sql}, e:{e}'
+            self.insertLog(log_str)
+            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")    
 
     def load_settings(self):
         while(True):
@@ -305,8 +295,8 @@ class MyApi:
                         # 결과 가져오기
                         print(results[1])
                         self.userinfo.memid = results[1]  # memid
-                        self.userinfo.b_key = "86585d7c1baee326041c38c9293780de7d93f7ca3f87ca" #results[2]  # memid
-                        self.userinfo.b_skey = "YTdiNDVmZGRkYmYxOTQyMTU0NzkxN2EyZTAyNjcyNmMzZWNjMjMzZDgzZGU3NTliZjZjYjNiODZjYjAzNQ==" #results[3]  # memid
+                        self.userinfo.b_key = results[2]  # memid
+                        self.userinfo.b_skey = results[3]  # memid
                         self.userinfo.u_key = results[4]  # memid
                         self.userinfo.u_skey = results[5]  # memid
                         self.userinfo.name = results[6]  # memid
@@ -335,10 +325,15 @@ class MyApi:
         return (int(value * 10**count) / 10**count)   
 
 
-    async def info_message(self, market, RealTime_coin, trade_info, order_id):
+    async def info_message(self, market, trade_info, order_id, total_today):
            
         bot = telegram.Bot(token=self.settings.telegram)
         chat_id = '6380176264'
+
+        bit_coin = self.coinSet['bit']['coin_amount']
+        bit_krw = self.coinSet['bit']['krw_price']
+        up_coin = self.coinSet['up']['coin_amount']
+        up_krw = self.coinSet['up']['krw_price']
         
         buy_order_id = trade_info.buy_id
         buy_price = self.cutFloat(trade_info.buy_price,2)        
@@ -350,7 +345,6 @@ class MyApi:
         sell_price = self.cutFloat(trade_info.sell_price,2)
         sold_price = self.cutFloat(trade_info.sold_price,2)
         sold_amount = self.cutFloat(trade_info.sold_amount,8)
-        sell_remaining_amount = self.cutFloat(trade_info.sell_remaining_amount,8)
         thread_id = trade_info.thread_id
 
         if market == 'bit':
@@ -360,7 +354,7 @@ class MyApi:
             buy_fee = self.settings.up_fee
             sell_fee = self.settings.bit_fee
 
-        fee = self.cutFloat(trade_info * sell_fee,5) + self.cutFloat(buy_price * buy_fee,5)
+        fee = self.cutFloat(sold_price * sell_fee,5) + self.cutFloat(buy_price * buy_fee,5)
         diff = self.cutFloat(sold_price - buy_price,3)
         money = self.cutFloat(diff - fee,3)
         
@@ -369,18 +363,9 @@ class MyApi:
 
         # 대기 메시지가 왔을 때 넣은 차익. 이게 원래 차익이어야 하는데, 판매하면서 가격이 떨어지면 diff가 낮아짐.
         got_money = self.cutFloat(money*sold_amount,2)
-
-        bit_coin = RealTime_coin['bit']['coin_amount']
-        bit_krw = RealTime_coin['bit']['krw_price']
-        up_coin = RealTime_coin['up']['coin_amount']
-        up_krw = RealTime_coin['up']['krw_price']
-
-
-        self.updateTodayKrw(got_money)
-        log_str = f"[{thread_id}]차익발생,{market},수익:{got_money},차액:{money}({diff})매수:{bought_amount},매도:{sold_amount},수수료:{fee}, 매도량:[{sold_amount}/{bought_amount}],총 수익:{self.coinSet.total_today}, bit_coin_amount:{RealTime_coin['bit']['coin_amount']},bit_coin_amount:{RealTime_coin['bit']['coin_amount']},total_kwr:{int(bit_krw+up_krw)}, bit:{int(bit_krw)}, up:{int(up_krw)}, mode:{trade_info.isChange}"
+        
+        log_str = f"[{thread_id}]차익발생,{market},수익:{got_money},차액:{money}({diff})매수:{buy_price},매도:{sold_price},수수료:{fee}, 매도량:[{sold_amount}/{bought_amount}],총 수익:{total_today}, bit_coin_amount:{bit_coin},bit_coin_amount:{up_coin},total_kwr:{int(bit_krw+up_krw)}, bit:{int(bit_krw)}, up:{int(up_krw)}, mode:{trade_info.isChange}"
         self.insertLog(log_str,thread_id,"차익발생")
-
-        self.insertTradeInfo(market, trade_info)
 
         
         direction = "업비트->빗썸" if market=='up' else "빗썸->업비트"
@@ -397,7 +382,7 @@ class MyApi:
         text += f"\[빗썸] 코인:{bit_coin:8.2f} 현금:{bit_krw:9.2f}원\n"
         text += f"\[업빗] 코인:{up_coin:8.2f} 현금:{up_krw:9.2f}원\n"
         text += f"\[총합] 코인:{bit_coin + up_coin:8.2f} 현금:{bit_krw + up_krw:9.2f}원\n"
-        text += f"오늘 수익 : {self.coinSet.total_today:8.2f}\n"
+        text += f"오늘 수익 : {total_today:8.2f}\n"
         
         if trade_info.isChange == 0 :
             text = text + "일반모드"
@@ -410,17 +395,20 @@ class MyApi:
         text = text + "[{:5d}]\n".format(thread_id)
         text = text + f"매수:{order_id}\n"
         text = text + f"매도:{buy_order_id}" 
-
-        # 매수 신청한 만큼 다 매도 된 경우 코인정보 삭제.
-        if sell_remaining_amount < 0.0000001 :
-            del self.trad_match[order_id]
-
         await bot.send_message(chat_id, text, parse_mode="Markdown")
     
     async def error_message(self, error_id, coin, err_log_str=""):
 
         bot = telegram.Bot(token=self.settings.telegram)
-        chat_id = '6380176264'
+        # telgegram주소 바꿔도 밑에 ID가 안 맞으면 안되는 듯, 나한테 날라왔었음.
+        if self.userinfo.memid == 1:
+            # 내꺼
+            chat_id = '6380176264'
+        elif self.userinfo.memid ==2:
+            # 명규꺼
+            chat_id = '5932188889'
+
+        
         
         if error_id == 0:
             text = f"[시스템 종료] {self.coin}\n"

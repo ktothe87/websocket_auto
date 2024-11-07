@@ -19,25 +19,29 @@ if len(sys.argv) < 2:
     log_str = f"error no input coinName program exit 3 "
     print(log_str)
     sys.exit(1)
+elif len(sys.argv) < 3:
+    memid = 1
+else:
+    memid = int(sys.argv[2])
 
-maxThread = 10
+maxThread = 5
 spairThread = 3
 
 coin = sys.argv[1].upper()
 coin_code ="KRW-"+ coin
 
-myApi = MyApi(coin.lower()) # 일반과퀵모드 여분쓰레드가 기본2개 있으니  쓰레드1개 사용 시 3으로 넣어야 함.
+myApi = MyApi(coin.lower(), memid) # 일반과퀵모드 여분쓰레드가 기본2개 있으니  쓰레드1개 사용 시 3으로 넣어야 함.
 coin_settings = myApi.settings
 
 market_event = {'bit':False,'up':False}
 current_market = ""
 r_current_market = ""
 
+up_coinList = {'ADA', 'ALGO', 'BLUR', 'CELO', 'ELF', 'EOS', 'GRS', 'GRT', 'ICX', 'MANA', 'MINA', 'POL', 'SAND', 'SEI', 'STG', 'TRX'}
+
 bit_api = marketApiClass(coin_code, 'bit',myApi.userinfo.b_key, myApi.userinfo.b_skey);
 up_api = marketApiClass(coin_code, 'up',myApi.userinfo.u_key, myApi.userinfo.u_skey);
 myThreadManager = MyThreadManager(maxThread + spairThread)
-
-
 
 #order_id1 = thread_manager.create_thread(escapeCheck, "order1", "market1", "order1", "BTC")
 #thread_manager.shutdown()
@@ -180,7 +184,7 @@ def SellToMarket(market, bought_order_id, thread_id, cp_trade_info):
                     time.sleep(0.1)
                 else:
                     log_str = f"[{thread_id}]{market_str[market]} error SellToMarket program exit 00 매수금액:{cp_trade_info.buy_price}, 매수량:{bought_amount}"
-                    myApi.insertLog(log_str,thread_id,"error")
+                    myApi.insertLog(log_str,thread_id,"exit")
                     
                     myApi.err_log_str = f"매수금액:{cp_trade_info.buy_price}, 매수량:{bought_amount}\n [{thread_id}]{market_str[market]} SellToMarket program exit 00"
                     myThreadManager.program_run = False
@@ -206,7 +210,7 @@ def SellToMarket(market, bought_order_id, thread_id, cp_trade_info):
         # 판매수량이 너무 작은 경우 무시하고 그 외에는 종료.
         if bought_amount > 0.001 :
             log_str = f"[{thread_id}]{market_str[market]} error SellToMarket program exit 0 매수금액:{cp_trade_info.buy_price}, 매수량:{bought_amount}"
-            myApi.insertLog(log_str,thread_id,"error")
+            myApi.insertLog(log_str,thread_id,"exit")
 
             myApi.err_log_str = f"매수금액:{cp_trade_info.buy_price}, 매수량:{bought_amount}\n [{thread_id}]{market_str[market]} error SellToMarket program exit 0"
             myThreadManager.program_run = False
@@ -222,6 +226,8 @@ def SellToMarket(market, bought_order_id, thread_id, cp_trade_info):
         order_id = result['uuid'] 
         # 매도쪽 오더 아이디로 매칭시킬꺼라 꼭 여기서 넣어야 함.
         # 오더 받는 쓰레드로 가져가면 매수쪽 오더아이디로 들어갈거라 매도 오더 왔을 때 죽음
+        cp_trade_info.sell_amount = bought_amount
+        cp_trade_info.sell_remaining_amount = bought_amount        
         myThreadManager.trade_list[order_id] = cp_trade_info
         
         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]{market} 555555555555555 매도신청 완료 ({order_id}),{result}")
@@ -233,15 +239,11 @@ def SellToMarket(market, bought_order_id, thread_id, cp_trade_info):
 
 def compare_and_update_coinset(original: MyApi.CoinSet, new_data: MyApi.CoinSet):
     changed = False
-    
-    for exchange in ['bit', 'up']:
+    for market in ['bit', 'up']:
         for key in ['buy', 'sell', 'buy_amount', 'sell_amount']:
-            print(f"ori:{getattr(original, exchange)[key]}")
-            print(f"new_data:{getattr(new_data, exchange)[key]}")
-            if getattr(original, exchange)[key] != getattr(new_data, exchange)[key]:
-                getattr(original, exchange)[key] = getattr(new_data, exchange)[key]
+            if original[market][key] != new_data[market][key]:
+                original[market][key] = new_data[market][key]
                 changed = True
-    
     return changed
 
 def orderbook_message(ws,message, market):
@@ -259,28 +261,27 @@ def orderbook_message(ws,message, market):
             myApi.insertLog(log_str,-1,"error")
 
         elif item.get("code") == coin_code :  # Check if the market is in the coins list
-
+            
+            if RealTime_coin[market]['buy'][0] != cutFloat(item['orderbook_units'][0]['bid_price'],2) or RealTime_coin[market]['buy'][1] != cutFloat(item['orderbook_units'][1]['bid_price'],2)  or RealTime_coin[market]['buy_amount'][0] != cutFloat(item['orderbook_units'][0]['bid_size'],8) or RealTime_coin[market]['buy_amount'][1] != cutFloat(item['orderbook_units'][1]['bid_size'],8) or RealTime_coin[market]['sell'][0] != cutFloat(item['orderbook_units'][0]['ask_price'],2) or RealTime_coin[market]['sell_amount'][0] != cutFloat(item['orderbook_units'][0]['ask_size'],8) and cutFloat(item['orderbook_units'][0]['bid_size'],8) > 0:
                 RealTime_coin.coin = coin.lower()
-                tmp_RealTime_coin.coun = coin.lower()
                 for i in range(5):  # 0부터 4까지 반복
-                    tmp_RealTime_coin[market]['buy'][i] = cutFloat(item['orderbook_units'][i]['bid_price'], 2)
-                    tmp_RealTime_coin[market]['buy_amount'][i] = cutFloat(item['orderbook_units'][i]['bid_size'], 8)
-                    tmp_RealTime_coin[market]['sell'][i] = cutFloat(item['orderbook_units'][i]['ask_price'], 2)
-                    tmp_RealTime_coin[market]['sell_amount'][i] = cutFloat(item['orderbook_units'][i]['ask_size'], 8)
+                    RealTime_coin[market]['buy'][i] = cutFloat(item['orderbook_units'][i]['bid_price'], 2)
+                    RealTime_coin[market]['buy_amount'][i] = cutFloat(item['orderbook_units'][i]['bid_size'], 8)
+                    RealTime_coin[market]['sell'][i] = cutFloat(item['orderbook_units'][i]['ask_price'], 2)
+                    RealTime_coin[market]['sell_amount'][i] = cutFloat(item['orderbook_units'][i]['ask_size'], 8)
                 
-                if compare_and_update_coinset(RealTime_coin,tmp_RealTime_coin):
-                    RealTime_coin.BitToUp_diff = cutFloat(RealTime_coin['up']['buy'][0] - RealTime_coin['bit']['buy'][0], 3)
-                    RealTime_coin.UpToBit_diff = cutFloat(RealTime_coin['bit']['buy'][0] - RealTime_coin['up']['buy'][0], 3)
-                    RealTime_coin.BitToUp_fee = cutFloat( (RealTime_coin['up']['buy'][0] * coin_settings.up_fee) + (RealTime_coin['bit']['sell'][0] * coin_settings.bit_fee), 3)
-                    RealTime_coin.UpToBit_fee = cutFloat( (RealTime_coin['bit']['buy'][0] * coin_settings.bit_fee) + (RealTime_coin['up']['sell'][0] * coin_settings.up_fee) ,3)
-                    coin_settings.BitToUp_comp_money_risk = cutFloat(RealTime_coin['bit']['buy'][0] * coin_settings.BitToUp_comp_money_risk_rate ,3)
-                    coin_settings.UpToBit_comp_money_risk = cutFloat(RealTime_coin['up']['buy'][0] * coin_settings.UpToBit_comp_money_risk_rate,3)
+                RealTime_coin.BitToUp_diff = cutFloat(RealTime_coin['up']['buy'][0] - RealTime_coin['bit']['buy'][0], 3)
+                RealTime_coin.UpToBit_diff = cutFloat(RealTime_coin['bit']['buy'][0] - RealTime_coin['up']['buy'][0], 3)
+                RealTime_coin.BitToUp_fee = cutFloat( (RealTime_coin['up']['buy'][0] * coin_settings.up_fee) + (RealTime_coin['bit']['sell'][0] * coin_settings.bit_fee), 3)
+                RealTime_coin.UpToBit_fee = cutFloat( (RealTime_coin['bit']['buy'][0] * coin_settings.bit_fee) + (RealTime_coin['up']['sell'][0] * coin_settings.up_fee) ,3)
+                coin_settings.BitToUp_comp_money_risk = cutFloat(RealTime_coin['bit']['buy'][0] * coin_settings.BitToUp_comp_money_risk_rate ,3)
+                coin_settings.UpToBit_comp_money_risk = cutFloat(RealTime_coin['up']['buy'][0] * coin_settings.UpToBit_comp_money_risk_rate,3)
 
-                    market_event[market] = True
-                    myThreadManager.orderbook_event.set()
+                market_event[market] = True
+                myThreadManager.orderbook_event.set()
 
-                    log_str = f"[{myThreadManager.active_thread_count}/{myThreadManager.max_threads}]{market},{RealTime_coin.coin},{RealTime_coin['bit']['buy'][0]}, {RealTime_coin['up']['buy'][0]}, {RealTime_coin['bit']['buy_amount'][0]}, {RealTime_coin['up']['buy_amount'][0]}, {RealTime_coin.BitToUp_fee}, ||  ,{RealTime_coin.BitToUp_diff}({RealTime_coin.BitToUp_diff2}),   ,{RealTime_coin.UpToBit_diff}({RealTime_coin.UpToBit_diff2}), || , {RealTime_coin['bit']['buy'][1]},{RealTime_coin['bit']['buy_amount'][1]}, {RealTime_coin['up']['buy'][1]}, {RealTime_coin['up']['buy_amount'][1]}, total:{cutFloat(RealTime_coin['bit']['coin_amount']+RealTime_coin['up']['coin_amount'],8)}, bit:{cutFloat(RealTime_coin['bit']['coin_amount'],8)}, {'up'}:{cutFloat(RealTime_coin['up']['coin_amount'],8)}, kwr:{cutFloat(RealTime_coin[market]['krw_price']+RealTime_coin[r_market]['krw_price'],2)}, {'up'}:{int(RealTime_coin[market]['krw_price'])}, {r_market}:{int(RealTime_coin[r_market]['krw_price'])}, BitToUp:{coin_settings.BitToUp_comp_money_risk}, UpToBit:{coin_settings.UpToBit_comp_money_risk}"
-                    myApi.insertLog(log_str)
+                log_str = f"[{myThreadManager.active_thread_count}/{myThreadManager.max_threads}]{market},{RealTime_coin.coin},{RealTime_coin['bit']['buy'][0]}, {RealTime_coin['up']['buy'][0]}, {RealTime_coin['bit']['buy_amount'][0]}, {RealTime_coin['up']['buy_amount'][0]}, {RealTime_coin.BitToUp_fee}, ||  ,{RealTime_coin.BitToUp_diff}({RealTime_coin.BitToUp_diff2}),   ,{RealTime_coin.UpToBit_diff}({RealTime_coin.UpToBit_diff2}), || , {RealTime_coin['bit']['buy'][1]},{RealTime_coin['bit']['buy_amount'][1]}, {RealTime_coin['up']['buy'][1]}, {RealTime_coin['up']['buy_amount'][1]}, total:{cutFloat(RealTime_coin['bit']['coin_amount']+RealTime_coin['up']['coin_amount'],8)}, bit:{cutFloat(RealTime_coin['bit']['coin_amount'],8)}, {'up'}:{cutFloat(RealTime_coin['up']['coin_amount'],8)}, kwr:{cutFloat(RealTime_coin[market]['krw_price']+RealTime_coin[r_market]['krw_price'],2)}, {'up'}:{int(RealTime_coin[market]['krw_price'])}, {r_market}:{int(RealTime_coin[r_market]['krw_price'])}, BitToUp:{coin_settings.BitToUp_comp_money_risk}, UpToBit:{coin_settings.UpToBit_comp_money_risk}"
+                myApi.insertLog(log_str)
             
         elif item.get('status'):
             log_str = f"{market} orderbook :{item}"
@@ -341,12 +342,23 @@ def escapeCheck(market, thread_id, order_id, stop_event):
 
             if not goExit:
                 diff = cutFloat(RealTime_coin[r_market]['buy'][0] - trade_info.buy_price,2)
+                r_diff = RealTime_coin[r_market]['buy'][0] - RealTime_coin[r_market]['buy'][1]
                 buy_amount = RealTime_coin[r_market]['buy_amount'][0] - myThreadManager.get_total_units(market,order_id)
                 last_index = last_profitable_index( trade_info.buy_price, RealTime_coin[r_market]['buy'])
                 if last_index < 0 :
-                    log_str = f"차익 부족{diff}({coin_settings.BitToUp_comp_money_risk})"
+                    if market =='up':
+                        #역방향
+                        log_str = f"차익 부족{diff}({coin_settings.UpToBit_comp_money_risk})"
+                    else:
+                        #정방향
+                        log_str = f"차익 부족{diff}({coin_settings.BitToUp_comp_money_risk})"
+                    
                     goExit = True
             
+                elif last_index == 0 and r_diff > gethighRiskValue(r_market):                    
+                    # last_index가 0이라는건 매수1 이외의 매수호가는 차액을 만족하지 못한다는거
+                    # 그 상태에서 매수1과 매수2의 차액이 크면 진입 안함.
+                    log_str = f"{market_str[r_market]}쪽 마켓 매수1, 2 차이가 큼 {r_market}_매수1:{RealTime_coin[r_market]['buy'][0]}, {r_market}_매수2:{RealTime_coin[r_market]['buy'][1]}, {r_market}_매수 단위:{gethighRiskValue(r_market)}"
                 else:
                     #업빗매수2과도 차익이 허용범위니까 물량을 포함해서 계산.
                     buy_amount += sum(RealTime_coin[r_market]['buy_amount'][1:last_index+1])
@@ -420,19 +432,19 @@ def escapeCheck(market, thread_id, order_id, stop_event):
                 
                 if response.status_code == 200:
                     #print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]{market_str[market]}탈출완료({order_id})")
-                    log_str = f'[{thread_id}]{market_str[market]}탈출완료'
-                    myApi.insertLog(log_str,thread_id, f'{market_str[market]}탈출완료')
+                    log_str = f'[{thread_id}]{market_str[market]}탈출신청완료'
+                    myApi.insertLog(log_str,thread_id, f'{market_str[market]}탈출신청완료')
                 elif response.status_code == 400:
                     ## 이미 체결된 주문  빗썸은 name, 업빗은 message로 옴
                     if cancel_result['error'].get('name') == 'done_order' or cancel_result['error'].get('message') == 'done_order':
                         log_str = f"[{thread_id}]{market_str[market]}error escapeCheck cancel fail(already bought), order_id:{order_id}, {cancel_result}"
-                        myApi.insertLog(log_str,thread_id)
+                        myApi.insertLog(log_str,thread_id,"no_Order")
                     else:
                         log_str = f"[{thread_id}]{market_str[market]}error escapeCheck cancel request fail, order_id:{order_id}, {cancel_result}"
                         myApi.insertLog(log_str,thread_id,"error")
                 elif response.status_code == 404:
-                    log_str = f"[{thread_id}]{market_str[market]}error escapeCheck 주문을 찾지 못함:{order_id}, {cancel_result}"
-                    myApi.insertLog(log_str,thread_id,"error")
+                    log_str = f"[{thread_id}]{market_str[market]}주문을 찾지 못함:{order_id}, {cancel_result}"
+                    myApi.insertLog(log_str,thread_id,"no_Order")
                 else:  
                     log_str = f"[{thread_id}]{market_str[market]}error escapeCheck cancel status_code:{response.status_code}, order_id:{order_id}, {cancel_result}"
                     myApi.insertLog(log_str,thread_id,"error")
@@ -489,19 +501,22 @@ def parseMyOrder(ws,message,market):
         order_status = parsed_data["state"]
         order_id = parsed_data['uuid']
         completed_units = 0
-        temp_trade = None
-        
-        try:
-            trade_info = myThreadManager.get_trade(order_id)
-            if trade_info is None :
-                log_str = f"[{market}]프로그램으로 신청한게 아닌거 같음. 확인 필요.{order_id}, {order_status}, {parsed_data}"
-                #print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
-                print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
-                myApi.insertLog(log_str,-1,'error')
-                
-            else:
-                thread_id = trade_info.thread_id
+       
+        trade_info = myThreadManager.get_trade(order_id)
+        if trade_info is None :
+            log_str = f"[{market}]프로그램으로 신청한게 아닌거 같음. 확인 필요.{order_id}, {order_status}, {parsed_data}"
+            #print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
+            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
+            myApi.insertLog(log_str,-1,'error')
+            
+        else:
+            thread_id = trade_info.thread_id
 
+            log_str = f"[{thread_id}][{market}]({ask_bid}) 주문상태:{order_status}, {parsed_data}"
+            myApi.insertLog(log_str,thread_id,"주문이력")
+            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
+
+            try:
                 if ask_bid =='BID' :    
 
                     # 빗썸은 부분매수 후의 마지막 부분매수는 완료로 옴. 업빗은 따로 완료가 한번 더 옴.
@@ -514,17 +529,8 @@ def parseMyOrder(ws,message,market):
                         units = cutFloat(parsed_data['executed_volume'],8)
                     else:
                         completed_units = cutFloat(parsed_data['executed_volume'],8)
-                        units = cutFloat(parsed_data['volume'],8)
-                        
+                        units = cutFloat(parsed_data['volume'],8)                  
                     
-                    
-                        
-                    # 다 사졌으면 신청량이 될거고, 부분매수 된거면 체결된 양 만큼만 될거고.
-                    
-                    log_str = f"[{thread_id}][{market}매수] 주문상태:{order_status}, 매수성공양:{completed_units}, {parsed_data}"
-                    #print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
-                    myApi.insertLog(log_str,thread_id,"주문이력")
-                    #myApi.insertLog(log_str,thread_id,'매수취소',market)
                 
                     buy_amount = RealTime_coin[r_market]['buy_amount'][0] - myThreadManager.get_total_units(market, order_id)
                     diff = cutFloat(RealTime_coin[r_market]['buy'][0] - trade_info.buy_price,2)
@@ -548,8 +554,8 @@ def parseMyOrder(ws,message,market):
                                 print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]{market}333333333333333 매수성공 짜투리 처리불가({order_id}), 짜투리코인:{completed_units}개")
                             else:
                                 isOK = True
-                                isClear = True
-        
+
+                            isClear = True
                             log_str = f"[{thread_id}]{market}매수가격:{cutFloat(parsed_data['price'],2)}, 체결량:{completed_units}, 예상 차익:{diff},  {parsed_data}"
                             #print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
                             myApi.insertLog(log_str,thread_id,f"매수성공",market)
@@ -561,7 +567,7 @@ def parseMyOrder(ws,message,market):
                         ## 대기가 안들어오고 바로 trade가 온적이 있음.
                         ## 대기를 안타서 코인정보가 안만들어졌어서 신청했을 때 만드는걸로 변경.
                         
-                        log_str = f"[{thread_id}]{market}차익:{diff}, 신청량:[{completed_units}/{units}({buy_amount}), up_buy:{cutFloat(parsed_data['price'],2)}, bit_buy1:{RealTime_coin[r_market]['buy'][0]},   highRiskValue:{coin_settings.highRiskValue}, highRiskScope:{coin_settings.highRiskScope}, highRiskValue * highRiskScope:{coin_settings.highRiskValue * coin_settings.highRiskScope}, {parsed_data}"
+                        log_str = f"[{thread_id}]{market}차익:{diff}, 신청량:[{completed_units}/{units}({buy_amount}), up_buy:{cutFloat(parsed_data['price'],2)}, bit_buy1:{RealTime_coin[r_market]['buy'][0]}, {parsed_data}"
                         myApi.insertLog(log_str,thread_id,'매수대기',market)
 
                         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]{market}22222222222222222 매수대기 ({order_id}),{parsed_data}")
@@ -613,14 +619,13 @@ def parseMyOrder(ws,message,market):
                         trade_info.trade_count += 1
                         trade_info.bought_amount = completed_units
                         trade_info.sell_amount = completed_units
-                        trade_info.sell_remaining_amount = completed_units
                         trade_info.buy_remaining_amount -= completed_units
 
-                        # 남은양을 다 쓴거면 마지막이라는거니까 클리어도 시켜 줄 것.
-                        if temp_trade.buy_remaining_amount < 0.000001:
-                            isClear = True
-
                         cp_trade_info = copy.deepcopy(trade_info)
+
+                        # 남은양을 다 쓴거면 마지막이라는거니까 클리어도 시켜 줄 것.
+                        if trade_info.buy_remaining_amount < 0.000001:
+                            isClear = True
 
                         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]SellToMarket({r_market}) 시작 ({order_id}),{parsed_data}")
                         SellToMarket(r_market, order_id, thread_id, cp_trade_info)
@@ -642,12 +647,8 @@ def parseMyOrder(ws,message,market):
                     isOk = False
                     order_status = parsed_data["state"]
                     order_id = parsed_data['uuid']
-                    temp_trade = myApi.trad_match[order_id]
-                    cp_trade_info = copy.deepcopy(temp_trade)
                     completed_units = 0
                     
-                    
-                    cp_trade_info.sold_price = cutFloat(parsed_data['price'],2)
 
                     if order_status =='trade':
                         completed_units = cutFloat(parsed_data['volume'],8)                          
@@ -663,37 +664,44 @@ def parseMyOrder(ws,message,market):
                         log_str = f"[{thread_id}]{market}매도 error parseMyOrder"
                         myApi.insertLog(log_str,thread_id,"error")
 
-                    cp_trade_info.sold_amount = completed_units
-                    
-                    log_str = f"[{thread_id}]myOrder [{market}]매도({order_status}), {completed_units}, {order_id}, {parsed_data}"
-                    #print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
-                    myApi.insertLog(log_str)
 
                     if isOk:
-                        cp_trade_info.sell_remaining_amount -= completed_units
+                        trade_info.sell_remaining_amount -= completed_units
+
+                        cp_trade_info = copy.deepcopy(trade_info)
+                        cp_trade_info.sold_price = cutFloat(parsed_data['price'],2)
+                        cp_trade_info.sold_amount = completed_units
                         cp_trade_info.sell_id = order_id
-                        cp_trade_info.thread_id = thread_id
-                        cp_trade_info.success_time = datetime.now()                        
+                        cp_trade_info.success_time = datetime.now()
+
+                        ### 남은양이 0에 가까우면 trade_list에 판매쪽 오더아이디로 만든거 제거해야함.
+                        # 매수 신청한 만큼 다 매도 된 경우 코인정보 삭제.
+                        if cp_trade_info.sell_remaining_amount < 0.0000001 :
+                            myThreadManager.del_trade(order_id)
                     
-                       
-                        # #매도가 성사 되었고, 매수 신청양에서 매도 된 것들이 다 빠져서 끝났는데 아직도 쓰레드가 남아있으면 제거.
-                        # if cp_trade_info.buy_id in myThreadManager.trade_list :
-                        #     if myThreadManager.get_trade(cp_trade_info.buy_id).buy_remaining_amount < 0.000001:
-                        #         del myThreadManager.trade_list[cp_trade_info.buy_id]
-
-
                         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]{market} 77777777777 매도 완료 매수:{cp_trade_info.buy_id}, 매도:({order_id}), {parsed_data}")
 
                         log_str = f"[{thread_id}]{market}매도완료"
                         #print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
                         myApi.insertLog(log_str,thread_id,f"{market}매도완료")
+
+                        if market == 'up':
+                            buy_fee = myApi.settings.bit_fee
+                            sell_fee = myApi.settings.up_fee
+                        else:
+                            buy_fee = myApi.settings.up_fee
+                            sell_fee = myApi.settings.bit_fee
+
+                        
+                        total_today = myApi.insertTradeInfo(r_market, cp_trade_info, buy_fee, sell_fee)
                         
                         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-                        asyncio.run(myApi.info_message(r_market, RealTime_coin, cp_trade_info, order_id))
-        except Exception as e: 
-            log_str = f"myOrder error:{order_id}, {parsed_data}, e:{e}"
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
-            myApi.insertLog(log_str,thread_id,"error")
+                        asyncio.run(myApi.info_message(r_market, cp_trade_info, order_id, total_today))
+
+            except Exception as e: 
+                log_str = f"myOrder error:{order_id}, {parsed_data}, e:Type({type(e)}), Message({getattr(e, 'message', 'No message')})"
+                print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
+                myApi.insertLog(log_str,thread_id,"error")
         
     else:
         log_str = f"{market} error parseMyOrder Unknown message type:{parsed_data}"
@@ -704,10 +712,10 @@ def getMyOrder(ws,message,market):
     thread = threading.Thread(target=parseMyOrder, args=(ws,message,market))
     thread.start()                        
 
-bitCheckMyOrder_Class = wsPrivateClass(coin,'bit',getMyOrder,"616ee31eb0f5bf49a84b43377faaed32f39b609cce9ab3","YjA2MWJjOTZkNzY3NzMxN2VhMWJiY2Y5YmM0OWRlM2I0NTMyNzVhMmVjMzRmMjljNjk5NmNiOWNiMjVjMA==")
+bitCheckMyOrder_Class = wsPrivateClass(coin,'bit',getMyOrder,myApi.userinfo.b_key, myApi.userinfo.b_skey);
 bitCheckMyOrder_Class.start()
 
-upCheckMyOrder_Class = wsPrivateClass(coin,'up',getMyOrder,"WQgtxqOQCpoKqs14LwM0FZ5dr81TnagWgjBx2pxq","rOx7ykdxksGvhj0q9nizW7wwbm2Qnd8bGPVpvYIw")
+upCheckMyOrder_Class = wsPrivateClass(coin,'up',getMyOrder,myApi.userinfo.u_key, myApi.userinfo.u_skey);
 upCheckMyOrder_Class.start()
 
 
@@ -716,9 +724,6 @@ log_str = f"while start myThreadManager.program_run:{myThreadManager.program_run
 myApi.insertLog(log_str)
 wait_amount = 0
 
-
-#myApi.load_settings()
-myApi.updateTodayKrw(0)
 
 getBothBalance()
 
@@ -767,24 +772,31 @@ def checkForBuy(market,r_market):
     compare_money = RealTime_coin[market]['buy'][0] * min_buy_amount
     compare_my_coin = RealTime_coin[r_market]['coin_amount'] - myThreadManager.get_total_units(market)
     last_index = last_profitable_index(RealTime_coin[market]['buy'][0], RealTime_coin[r_market]['buy'])
+    r_diff = RealTime_coin[r_market]['buy'][0] - RealTime_coin[r_market]['buy'][1]
     if last_index > -1 :
         can_buy_market_amount = sum(RealTime_coin[r_market]['buy_amount'][0:last_index+1])
     else:
         can_buy_market_amount= 0
     can_buy_market_amount-= myThreadManager.get_total_units(market)
-  
-    log_str = f"[{temp_thread_id}]{market_str[market]}진입준비 {market}_buy1:{RealTime_coin[market]['buy'][0]}, {r_market}_buy1:{RealTime_coin[r_market]['buy'][0]}, {r_market}_buy1_amount:{RealTime_coin[r_market]['buy_amount'][0]}, coin_settings.highRiskValue : {coin_settings.highRiskValue}"
+    highRiskValue = gethighRiskValue(market)
+    log_str = f"[{temp_thread_id}]{market_str[market]}진입준비 {market}_buy1:{RealTime_coin[market]['buy'][0]}, {r_market}_buy1:{RealTime_coin[r_market]['buy'][0]}, {r_market}_buy1_amount:{RealTime_coin[r_market]['buy_amount'][0]}, {r_market}_매수1,2차이:{r_diff},{market}_매수단위:{highRiskValue}, {r_market}_매수단위:{gethighRiskValue(r_market)},"
     myApi.insertLog(log_str,temp_thread_id,f"{market_str[market]}진입준비")
 
     isOk = False
     if RealTime_coin[market]['krw_price'] < 5000 :
-        log_str = f"보유 자산부족(5000원 미만) : ({RealTime_coin[market]['krw_price']})"
+        log_str = f"보유 자산부족(5000원 미만), 사용가능 현금:({RealTime_coin[market]['krw_price']}원)"
     elif (compare_money > RealTime_coin[market]['krw_price']) :
         log_str = f"{market_str[market]} 현금 부족(최소수량 매수 불가), 최소수량:{min_buy_amount}, 최소수량 매수금액:{compare_money}, {market}krw_price:{RealTime_coin[market]['krw_price']}"
     elif RealTime_coin[r_market]['coin_amount'] < min_buy_amount:
-        log_str = f"{market_str[r_market]}쪽 내 코인 부족(최소수량 매도 불가), 최소수량:{min_buy_amount}, 최소수량 매수금액:{compare_money}, {r_market}_coin:{RealTime_coin[r_market]['coin_amount']}, 다른쓰레드 사용양:{myThreadManager.get_total_units(market)}"
+        log_str = f"{market_str[r_market]}쪽 내 코인 부족(최소수량 매도 불가), 사용가능 내 코인:{RealTime_coin[r_market]['coin_amount']}, 최소수량:{min_buy_amount}, 최소수량 매수금액:{compare_money}, {r_market}_coin:{RealTime_coin[r_market]['coin_amount']}, 다른쓰레드 사용양:{myThreadManager.get_total_units(market)}"
+    elif compare_my_coin < min_buy_amount:
+        log_str = f"{market_str[r_market]}쪽 사용가능한 내 코인 부족(다른 쓰레드에서 다 사용 중), 사용가능 내 코인:{compare_my_coin}, 다른쓰레드 사용양:{myThreadManager.get_total_units(market)}, 최소수량:{min_buy_amount}, 최소수량 매수금액:{compare_money}, {r_market}_coin:{RealTime_coin[r_market]['coin_amount']}"
     elif can_buy_market_amount< min_buy_amount :
-        log_str = f"{market_str[r_market]}쪽 마켓 코인 부족(최소수량 매수 불가), 최소수량:{min_buy_amount}, 최소수량 매수금액:{compare_money}, {r_market}_매수{last_index+1}:{RealTime_coin[r_market]['buy'][last_index]}, {r_market}_매수{last_index+1}까지 코인양:{can_buy_market_amount}, 다른쓰레드 사용양:{myThreadManager.get_total_units(market)}"
+        log_str = f"{market_str[r_market]}쪽 마켓 코인 부족(최소수량 매수 불가), 최소수량:{min_buy_amount}, 최소수량 매수금액:{compare_money}, {r_market}_매수{last_index+1}:{RealTime_coin[r_market]['buy'][last_index]}, {r_market}_매수{last_index+1}까지 코인양:{can_buy_market_amount}, 다른쓰레드 사용양:{myThreadManager.get_total_units(market)}, {market}진입예상금액{RealTime_coin[market]['buy'][0]}, 설정값{coin_settings.BitToUp_comp_money_risk}, {RealTime_coin[market]['buy'][0]+coin_settings.BitToUp_comp_money_risk}, {r_market}쪽 호가{RealTime_coin[r_market]['buy']}, last_index:{last_index}"
+    elif last_index == 0 and r_diff > gethighRiskValue(r_market):
+        # last_index가 0이라는건 매수1 이외의 매수호가는 차액을 만족하지 못한다는거
+        # 그 상태에서 매수1과 매수2의 차액이 크면 진입 안함.
+        log_str = f"{market_str[r_market]}쪽 마켓 매수1, 2 차이가 큼 {r_market}_매수1:{RealTime_coin[r_market]['buy'][0]}, {r_market}_매수2:{RealTime_coin[r_market]['buy'][1]}, {r_market}_매수 단위:{gethighRiskValue(r_market)}"
     #elif(compare_money <= 5000) :
     #    log_str = f"최소수량 매수 금액이 5000원 미만. 최소수량:{half_once_units}, 최소수량 매수금액:{compare_money}"
 
@@ -946,14 +958,13 @@ def checkForBuy(market,r_market):
     else:
         result = response.json()
         order_id = result["uuid"] 
-        
-        estimated_diff = sell_price - buy_price
-        
+              
         log_str = f"[{temp_thread_id}]{market_str[market]}매수신청 완료{order_id}), mode:{mode}"
         myApi.insertLog(log_str,temp_thread_id,f"{market_str[market]}매수신청 완료")
         
         # escapeCheck 에서 사용할 데이터도 있어서 쓰레드 생성 전에 add_trade 할 것.
-        trade_info = myThreadManager.add_trade(order_id, buy_amount, buy_price, buy_amount, estimated_diff, mode, 0)
+        trade_info = myThreadManager.add_trade(order_id, buy_amount, buy_price, buy_amount, sell_price, mode, 0)
+                            
         thread_id = myThreadManager.create_thread(escapeCheck, market, order_id)
         trade_info.thread_id = thread_id
         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]{market_str[market]}1111111111111매수신청 완료({order_id}), mode:{mode}, result:{result}")
@@ -963,6 +974,43 @@ def checkForBuy(market,r_market):
     current_time = datetime(1,1,1, second=0)      
     
 
+def gethighRiskValue(market):
+
+    temp_buy1 = RealTime_coin[market]['buy'][0]
+    if temp_buy1 < 0.0001:
+        highRiskValue = 0.00000001
+    elif temp_buy1 < 0.001:
+        highRiskValue = 0.0000001
+    elif temp_buy1 < 0.01:
+        highRiskValue = 0.000001
+    elif temp_buy1 < 0.1:
+        highRiskValue = 0.00001
+    elif temp_buy1 < 1:
+        highRiskValue = 0.0001
+    elif temp_buy1 < 10:
+        highRiskValue = 0.001
+    elif temp_buy1 < 100:
+        highRiskValue = 0.01
+    elif temp_buy1 < 1000:
+        # 업비트는 원래 0.1원인데 일부 코인만 1원으로 하고 있음.
+        if market == 'bit' or (market == 'up' and (coin in up_coinList)):
+            highRiskValue = 1
+        else:
+            highRiskValue = 0.1
+    elif temp_buy1 < 10000:
+        highRiskValue = 1
+    elif temp_buy1 < 100000:
+        highRiskValue = 10
+    elif temp_buy1 < 500000:
+        highRiskValue = 50
+    elif temp_buy1 < 1000000:
+        highRiskValue = 100
+    elif temp_buy1 < 5000000:
+        highRiskValue = 500
+    elif temp_buy1 < 10000000:
+        highRiskValue = 1000
+
+    return highRiskValue
 
 
 while(myThreadManager.program_run): 
@@ -994,30 +1042,7 @@ while(myThreadManager.program_run):
             time.sleep(1)
 
         continue;
-    
-    temp_buy1 = RealTime_coin['bit']['buy'][0]
-    if temp_buy1 < 1:
-        highRiskValue = 0.0001
-    elif temp_buy1 < 10:
-        highRiskValue = 0.001
-    elif temp_buy1 < 100:
-        # 빗썸은 1원인데 그건 밑에 소스에서 빗썸에서 계산할 때 변경하고 있음.
-        highRiskValue = 0.01
-    elif temp_buy1 < 10000:
-        highRiskValue = 1
-    elif temp_buy1 < 100000:
-        highRiskValue = 10
-    elif temp_buy1 < 500000:
-        highRiskValue = 50
-    else:
-        highRiskValue = 0
-        if temp_buy1 > 0 :
-            log_str = f"[{temp_thread_id}]error,1원 미만의 코인으로 프로그램 종료. bit_buy1:{temp_buy1}"
-            myApi.insertLog(log_str,temp_thread_id,"error")
 
-            myApi.err_log_str = f"[{temp_thread_id}]1원 미만. bit_buy1:{temp_buy1}"
-            myThreadManager.program_run = False
-        continue
 
     isChecking = True
     isUpbitcheck = True
