@@ -1,0 +1,65 @@
+SELECT * FROM public.member WHERE memid = 1
+1
+[2024-11-10 21:30:16.572]wsClass,init,ETC,bit
+[2024-11-10 21:30:16.573]wsClass,init,ETC,up
+[2024-11-10 21:30:16.603]wsClass,connected,ETC,up
+[2024-11-10 21:30:16.618]wsPrivateClass,connected,ETC,up
+[2024-11-10 21:30:16.638]wsClass,connected,ETC,bit
+[2024-11-10 21:30:16.666]wsPrivateClass,connected,ETC,bit
+[21:32:01.274][1]빗썸1111111111111매수신청 완료(C0105000000391449242), mode:1, result:{'uuid': 'C0105000000391449242', 'side': 'bid', 'ord_type': 'limit', 'price': '32010', 'state': 'wait', 'market': 'KRW-ETC', 'created_at': '2024-11-10T21:32:01+09:00', 'volume': '25', 'remaining_volume': '25', 'reserved_fee': '2000.625', 'remaining_fee': '2000.625', 'paid_fee': '0', 'locked': '802251.625', 'executed_volume': '0', 'trades_count': 0}
+[21:32:01.325][1][bit](BID) 주문상태:wait, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391449242', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'wait', 'trade_uuid': None, 'price': 32010, 'volume': 25, 'remaining_volume': 25, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 2000.625, 'remaining_fee': 2000.625, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731241921201, 'timestamp': 1731241921301, 'stream_type': 'REALTIME'}
+[21:32:01.327][1]bit22222222222222222 매수대기 (C0105000000391449242),{'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391449242', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'wait', 'trade_uuid': None, 'price': 32010, 'volume': 25, 'remaining_volume': 25, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 2000.625, 'remaining_fee': 2000.625, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731241921201, 'timestamp': 1731241921301, 'stream_type': 'REALTIME'}
+[21:32:02.079][1]빗썸탈출신청(C0105000000391449242) mode:1, 빗썸매수3까지 내려옴. 매수금액(32010.0), 매수2(32020.0)
+[21:32:02.360][1]빗썸탈출신청결과(C0105000000391449242) status_code:200 , {'uuid': 'C0105000000391449242', 'side': 'bid', 'ord_type': 'limit', 'price': '32010', 'state': 'wait', 'market': 'KRW-ETC', 'created_at': '2024-11-10T21:32:01+09:00', 'volume': '25', 'remaining_volume': '25', 'reserved_fee': '2000.625', 'remaining_fee': '2000.625', 'paid_fee': '0', 'locked': '802251.625', 'executed_volume': '0', 'trades_count': 0}
+[21:32:02.432][1][bit](BID) 주문상태:cancel, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391449242', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32010, 'volume': 25, 'remaining_volume': 25, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 2000.625, 'remaining_fee': 2000.625, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731241921201, 'timestamp': 1731241922415, 'stream_type': 'REALTIME'}
+[21:32:02.432][1]bit33333333333333333 매수취소(C0105000000391449242), {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391449242', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32010, 'volume': 25, 'remaining_volume': 25, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 2000.625, 'remaining_fee': 2000.625, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731241921201, 'timestamp': 1731241922415, 'stream_type': 'REALTIME'}
+[21:32:02.432][1]bit 4444444444444 쓰레드 정리 isclear isClear(C0105000000391449242), 남은양:25.0, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391449242', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32010, 'volume': 25, 'remaining_volume': 25, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 2000.625, 'remaining_fee': 2000.625, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731241921201, 'timestamp': 1731241922415, 'stream_type': 'REALTIME'}
+[21:32:02.433][MyApi]stop_threads 시작 C0105000000391449242
+[21:32:02.434]빗썸 [1][MyApi]쓰레드 종료
+[21:32:02.435][1] 666666666666666 [MyApi]stop_threads 종료 C0105000000391449242
+[22:44:01.226]kill로 인한 프로그램 종료 시작 [0/5]
+[2024-11-10 22:44:01.247]wsClass,close,ETC,up,status_code:None,msg:None
+[22:44:01.288]kill로 인한 프로그램 종료 시작 [0/5]
+kill에 의한 종료
+[2024-11-10 22:44:05.020]wsPrivateClass,close,ETC,upstatus_code:None,msg:None
+[2024-11-10 22:44:09.044]wsPrivateClass,close,ETC,bitstatus_code:None,msg:None
+[2024-11-10 22:44:11.219]wsClass,close,ETC,bit,status_code:None,msg:None
+SELECT * FROM public.member WHERE memid = 1
+1
+[2024-11-10 22:44:25.364]wsClass,init,ETC,bit
+[2024-11-10 22:44:25.364]wsClass,init,ETC,up
+[2024-11-10 22:44:25.391]wsClass,connected,ETC,up
+[2024-11-10 22:44:25.619]wsPrivateClass,connected,ETC,up
+[2024-11-10 22:44:25.901]wsPrivateClass,connected,ETC,bit
+[2024-11-10 22:44:25.924]wsClass,connected,ETC,bit
+[23:14:07.060][1]빗썸1111111111111매수신청 완료(C0105000000391479906), mode:1, result:{'uuid': 'C0105000000391479906', 'side': 'bid', 'ord_type': 'limit', 'price': '32340', 'state': 'wait', 'market': 'KRW-ETC', 'created_at': '2024-11-10T23:14:06+09:00', 'volume': '23.22662', 'remaining_volume': '23.22662', 'reserved_fee': '1877.872227', 'remaining_fee': '1877.872227', 'paid_fee': '0', 'locked': '753027.763027', 'executed_volume': '0', 'trades_count': 0}
+[23:14:07.270][1][bit](BID) 주문상태:wait, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479906', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'wait', 'trade_uuid': None, 'price': 32340, 'volume': 23.22662, 'remaining_volume': 23.22662, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 1877.872227, 'remaining_fee': 1877.872227, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248046975, 'timestamp': 1731248047104, 'stream_type': 'REALTIME'}
+[23:14:07.272][1]bit22222222222222222 매수대기 (C0105000000391479906),{'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479906', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'wait', 'trade_uuid': None, 'price': 32340, 'volume': 23.22662, 'remaining_volume': 23.22662, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 1877.872227, 'remaining_fee': 1877.872227, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248046975, 'timestamp': 1731248047104, 'stream_type': 'REALTIME'}
+[23:14:10.827][1]빗썸탈출신청(C0105000000391479906) mode:1, 빗썸매수3까지 내려옴. 매수금액(32340.0), 매수2(32350.0)
+[23:14:11.084][1]빗썸탈출신청결과(C0105000000391479906) status_code:200 , {'uuid': 'C0105000000391479906', 'side': 'bid', 'ord_type': 'limit', 'price': '32340', 'state': 'wait', 'market': 'KRW-ETC', 'created_at': '2024-11-10T23:14:06+09:00', 'volume': '23.22662', 'remaining_volume': '23.22662', 'reserved_fee': '1877.872227', 'remaining_fee': '1877.872227', 'paid_fee': '0', 'locked': '753027.763027', 'executed_volume': '0', 'trades_count': 0}
+[23:14:11.230][1]빗썸탈출신청(C0105000000391479906) mode:1, 빗썸매수3까지 내려옴. 매수금액(32340.0), 매수2(32350.0)
+[23:14:11.269][1][bit](BID) 주문상태:cancel, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479906', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32340, 'volume': 23.22662, 'remaining_volume': 23.22662, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 1877.872227, 'remaining_fee': 1877.872227, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248046975, 'timestamp': 1731248051099, 'stream_type': 'REALTIME'}
+[23:14:11.269][1]bit33333333333333333 매수취소(C0105000000391479906), {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479906', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32340, 'volume': 23.22662, 'remaining_volume': 23.22662, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 1877.872227, 'remaining_fee': 1877.872227, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248046975, 'timestamp': 1731248051099, 'stream_type': 'REALTIME'}
+[23:14:11.270][1]bit 4444444444444 쓰레드 정리 isclear isClear(C0105000000391479906), 남은양:23.22662, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479906', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32340, 'volume': 23.22662, 'remaining_volume': 23.22662, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 1877.872227, 'remaining_fee': 1877.872227, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248046975, 'timestamp': 1731248051099, 'stream_type': 'REALTIME'}
+[23:14:11.271][MyApi]stop_threads 시작 C0105000000391479906
+[23:14:11.474][1]빗썸탈출신청결과(C0105000000391479906) status_code:404 , {'error': {'name': 'order_not_found', 'message': '주문을 찾지 못했습니다.'}}
+[23:14:11.478]빗썸 [1][MyApi]쓰레드 종료
+[23:14:11.478][1] 666666666666666 [MyApi]stop_threads 종료 C0105000000391479906
+[23:14:16.797][2]빗썸1111111111111매수신청 완료(C0105000000391479947), mode:1, result:{'uuid': 'C0105000000391479947', 'side': 'bid', 'ord_type': 'limit', 'price': '32360', 'state': 'wait', 'market': 'KRW-ETC', 'created_at': '2024-11-10T23:14:16+09:00', 'volume': '6.16522', 'remaining_volume': '6.16522', 'reserved_fee': '498.766298', 'remaining_fee': '498.766298', 'paid_fee': '0', 'locked': '200006.285498', 'executed_volume': '0', 'trades_count': 0}
+[23:14:16.985][2][bit](BID) 주문상태:wait, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479947', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'wait', 'trade_uuid': None, 'price': 32360, 'volume': 6.16522, 'remaining_volume': 6.16522, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 498.766298, 'remaining_fee': 498.766298, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248056727, 'timestamp': 1731248056807, 'stream_type': 'REALTIME'}
+[23:14:16.988][2]bit22222222222222222 매수대기 (C0105000000391479947),{'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479947', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'wait', 'trade_uuid': None, 'price': 32360, 'volume': 6.16522, 'remaining_volume': 6.16522, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 498.766298, 'remaining_fee': 498.766298, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248056727, 'timestamp': 1731248056807, 'stream_type': 'REALTIME'}
+[23:14:18.131][2]빗썸탈출신청(C0105000000391479947) mode:1, 최종적으로 수량 부족으로 탈출. 업빗매수2차익:20.0, BitToUp:22.659, UpToBit:16.195, 남은매수/신청매수:6.16522/6.16522, buy_amount:0.00522811, get_total_units:0, up_buy1_amount:0.00522811, up_buy2_amount:181.42509923
+[23:14:18.388][2]빗썸탈출신청결과(C0105000000391479947) status_code:200 , {'uuid': 'C0105000000391479947', 'side': 'bid', 'ord_type': 'limit', 'price': '32360', 'state': 'wait', 'market': 'KRW-ETC', 'created_at': '2024-11-10T23:14:16+09:00', 'volume': '6.16522', 'remaining_volume': '6.16522', 'reserved_fee': '498.766298', 'remaining_fee': '498.766298', 'paid_fee': '0', 'locked': '200006.285498', 'executed_volume': '0', 'trades_count': 0}
+[23:14:18.572][2][bit](BID) 주문상태:cancel, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479947', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32360, 'volume': 6.16522, 'remaining_volume': 6.16522, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 498.766298, 'remaining_fee': 498.766298, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248056727, 'timestamp': 1731248058408, 'stream_type': 'REALTIME'}
+[23:14:18.572][2]bit33333333333333333 매수취소(C0105000000391479947), {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479947', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32360, 'volume': 6.16522, 'remaining_volume': 6.16522, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 498.766298, 'remaining_fee': 498.766298, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248056727, 'timestamp': 1731248058408, 'stream_type': 'REALTIME'}
+[23:14:18.572][2]bit 4444444444444 쓰레드 정리 isclear isClear(C0105000000391479947), 남은양:6.16522, {'type': 'myOrder', 'code': 'KRW-ETC', 'uuid': 'C0105000000391479947', 'ask_bid': 'BID', 'order_type': 'limit', 'state': 'cancel', 'trade_uuid': None, 'price': 32360, 'volume': 6.16522, 'remaining_volume': 6.16522, 'executed_volume': 0, 'trades_count': 0, 'reserved_fee': 498.766298, 'remaining_fee': 498.766298, 'paid_fee': 0, 'executed_funds': 0, 'trade_timestamp': None, 'order_timestamp': 1731248056727, 'timestamp': 1731248058408, 'stream_type': 'REALTIME'}
+[23:14:18.574][MyApi]stop_threads 시작 C0105000000391479947
+[23:14:18.575]빗썸 [2][MyApi]쓰레드 종료
+[23:14:18.575][2] 666666666666666 [MyApi]stop_threads 종료 C0105000000391479947
+[02:05:18.761]kill로 인한 프로그램 종료 시작 [0/5]
+[2024-11-11 02:05:18.904]wsClass,close,ETC,bit,status_code:None,msg:None
+[2024-11-11 02:05:19.103]wsPrivateClass,close,ETC,upstatus_code:None,msg:None
+[02:05:19.105]kill로 인한 프로그램 종료 시작 [0/5]
+kill에 의한 종료
+[2024-11-11 02:05:20.497]wsPrivateClass,close,ETC,bitstatus_code:None,msg:None
+[2024-11-11 02:05:28.751]wsClass,close,ETC,up,status_code:None,msg:None

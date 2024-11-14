@@ -1,0 +1,17 @@
+SELECT * FROM public.member WHERE memid = 2
+2
+[2024-11-13 10:26:18.012]wsClass,init,SOL,bit
+[2024-11-13 10:26:18.012]wsClass,init,SOL,up
+[2024-11-13 10:26:18.040]wsClass,connected,SOL,up
+[2024-11-13 10:26:18.069]wsPrivateClass,connected,SOL,up
+[2024-11-13 10:26:18.200]wsPrivateClass,connected,SOL,bit
+[2024-11-13 10:26:18.221]wsPrivateClass,close,SOL,bitstatus_code:None,msg:None
+[2024-11-13 10:26:18.223]wsClass,connected,SOL,bit
+[2024-11-13 10:26:18.277]wsPrivateClass,connected,SOL,bit
+[10:57:35.538]kill로 인한 프로그램 종료 시작 [0/5]
+[2024-11-13 10:57:35.562]wsClass,close,SOL,bit,status_code:None,msg:None
+[2024-11-13 10:57:35.564]wsClass,close,SOL,up,status_code:None,msg:None
+[2024-11-13 10:57:35.583]wsPrivateClass,close,SOL,bitstatus_code:None,msg:None
+[2024-11-13 10:57:35.589]wsPrivateClass,close,SOL,upstatus_code:None,msg:None
+[10:57:35.590]kill로 인한 프로그램 종료 시작 [0/5]
+kill에 의한 종료

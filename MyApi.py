@@ -5,27 +5,48 @@ import telegram
 import psycopg2
 from dataclasses import dataclass, field
 from typing import Dict, Any
-
+from decimal import Decimal, ROUND_DOWN
 
 class MyApi:
     @dataclass
     class CoinSet:
         thread_id: str = ""
+        # bit = {
+        #     'buy': [0.0] * 5,
+        #     'sell': [0.0] * 5,
+        #     'buy_amount': [0.0] * 5,
+        #     'sell_amount': [0.0] * 5,
+        #     'coin_amount': 0.0,
+        #     'krw_price': 0.0,
+        #     'ori_buy': ""
+        # }
+        # up = {
+        #     'buy': [0.0] * 5,
+        #     'sell': [0.0] * 5,
+        #     'buy_amount': [0.0] * 5,
+        #     'sell_amount': [0.0] * 5,
+        #     'coin_amount': 0.0,
+        #     'krw_price': 0.0,
+        #     'ori_buy': ""
+        # }
+
         bit = {
-            'buy': [0.0] * 5,
-            'sell': [0.0] * 5,
-            'buy_amount': [0.0] * 5,
-            'sell_amount': [0.0] * 5,
-            'coin_amount': 0.0,
-            'krw_price': 0.0
+            'buy': [Decimal('0.0')] * 5,
+            'sell': [Decimal('0.0')] * 5,
+            'buy_amount': [Decimal('0.0')] * 5,
+            'sell_amount': [Decimal('0.0')] * 5,
+            'coin_amount': Decimal('0.0'),
+            'krw_price': Decimal('0.0'),
+            'ori_buy': ""
         }
         up = {
-            'buy': [0.0] * 5,
-            'sell': [0.0] * 5,
-            'buy_amount': [0.0] * 5,
-            'sell_amount': [0.0] * 5,
-            'coin_amount': 0.0,
-            'krw_price': 0.0
+            'buy': [Decimal('0.0')] * 5,
+            'sell': [Decimal('0.0')] * 5,
+            'buy_amount': [Decimal('0.0')] * 5,
+            'sell_amount': [Decimal('0.0')] * 5,
+            'coin_amount': Decimal('0.0'),
+            'krw_price': Decimal('0.0'),
+            'ori_buy': ""
         }
         # bit: Dict[str, Any] = field(default_factory=lambda: {
         # 'buy': [0.0] * 5,
@@ -43,15 +64,15 @@ class MyApi:
         #     'coin_amount': 0.0,
         #     'krw_price': 0.0
         # })
+        ori_buy: str = ""
+        UpToBit_fee: Decimal = Decimal('0.0')
+        BitToUp_fee: Decimal = Decimal('0.0')
 
-        UpToBit_fee: float = 0.0
-        BitToUp_fee: float = 0.0
+        BitToUp_diff: Decimal = Decimal('0.0')
+        UpToBit_diff: Decimal = Decimal('0.0')
 
-        BitToUp_diff: float = 0.0
-        UpToBit_diff: float = 0.0
-
-        BitToUp_diff2: float = 0.0
-        UpToBit_diff2: float = 0.0    
+        BitToUp_diff2: Decimal = Decimal('0.0')
+        UpToBit_diff2: Decimal = Decimal('0.0')    
 
         def __getitem__(self, key):
             if key not in ['bit', 'up']:
@@ -60,23 +81,23 @@ class MyApi:
 
     @dataclass
     class Settings:
-        BitToUp_comp_money_risk_rate: float = 0.0
-        UpToBit_comp_money_risk_rate: float = 0.0
-        BitToUp_comp_money: float = 100.0
-        UpToBit_comp_money: float = 100.0
-        BitToUp_comp_money_risk: float = 0.0
-        UpToBit_comp_money_risk: float = 0.0
+        BitToUp_comp_money_risk_rate: Decimal = Decimal('0.0')
+        UpToBit_comp_money_risk_rate: Decimal = Decimal('0.0')
+        BitToUp_comp_money: Decimal = Decimal('100.0')
+        UpToBit_comp_money: Decimal = Decimal('100.0')
+        BitToUp_comp_money_risk: Decimal = Decimal('0.0')
+        UpToBit_comp_money_risk: Decimal = Decimal('0.0')
         send_wait_time: float = 0.0  # 7200
-        wait_amount: float = 0.0
+        wait_amount: Decimal = Decimal('0.0')
         check_wait_time: float = 0.0
-        once_units: float = 0.0
-        max_coin_amount: float = 0.0
+        once_units: Decimal = Decimal('0.0')
+        max_coin_amount: Decimal = Decimal('0.0')
         set_interval: float = 0.0  # 1.8초 유지 시에 만
-        minimum: float = 100.0
-        highRiskScope: float = 0.0
+        minimum: Decimal = Decimal('100.0')
+        highRiskScope: Decimal = Decimal('0.0')
         isAutoSend: int = 0  # 0: False, 1: 업비트로, 2: 빗썸으로
         send_coin: str = ""  # coin 변수를 사용해야 함
-        send_units: float = 0.0
+        send_units: Decimal = Decimal('0.0')
         send_ko_name: str = "김동규"
         send_en_name: str = "KIM DONGGYU"
         send_exchange_name: str = "Upbit"
@@ -84,9 +105,9 @@ class MyApi:
         send_destination: str = ""
         telegram: str = ""
         highRisk: bool =True
-        highRiskValue: float = 1
-        bit_fee: float = 0.0004
-        up_fee: float = 0.0005
+        highRiskValue: Decimal = Decimal('1')
+        bit_fee: Decimal = Decimal('0.0004')
+        up_fee: Decimal = Decimal('0.0005')
     
     @dataclass
     class UserInfo:
@@ -229,27 +250,27 @@ class MyApi:
                     else:
                         # 결과 가져오기
                         #print(results[3])
-                        self.settings.BitToUp_comp_money_risk_rate = results[3]  # btu_money_diff_rate
-                        self.settings.UpToBit_comp_money_risk_rate = results[4]  # utb_money_diff_rate
+                        self.settings.BitToUp_comp_money_risk_rate = Decimal(str(results[3]))  # btu_money_diff_rate
+                        self.settings.UpToBit_comp_money_risk_rate = Decimal(str(results[4]))  # utb_money_diff_rate
                         self.settings.send_wait_time = results[5]  # send_wait_time
-                        self.settings.wait_amount = results[6]  # wait_amount
-                        self.settings.once_units = results[7]  # once_units
-                        self.settings.max_coin_amount = results[8]  # max_coin_amount
+                        self.settings.wait_amount = Decimal(str(results[6]))  # wait_amount
+                        self.settings.once_units = Decimal(str(results[7]))  # once_units
+                        self.settings.max_coin_amount = Decimal(str(results[8]))  # max_coin_amount
                         self.settings.set_interval = results[9]
                         self.settings.check_wait_time = self.settings.send_wait_time
-                        self.settings.highRiskScope = results[10]  # highRiskScope
+                        self.settings.highRiskScope = Decimal(str(results[10]))  # highRiskScope
                         self.settings.isAutoSend = results[11]  # settings.isAutoSend
-                        self.settings.send_units = results[12]  # settings.send_units
+                        self.settings.send_units = Decimal(str(results[12]))  # settings.send_units
                         self.settings.send_ko_name = results[13]  # settings.send_ko_name
                         self.settings.send_en_name = results[14]  # settings.send_en_name
-                        self.settings.send_exchange_name = results[15]  # settings.send_exchange_name
+                        self.settings.send_exchange_name = results[15] # settings.send_exchange_name
                         self.settings.send_address = results[16]  # send_addres
                         self.settings.send_destination = results[17]  # settings.send_destination
                         self.settings.telegram = results[19] #18은 created_at
                         self.settings.highRisk = results[20] 
-                        self.settings.highRiskValue = results[21]
-                        self.settings.bit_fee = results[22]
-                        self.settings.up_fee = results[23]
+                        self.settings.highRiskValue = Decimal(str(results[21]))
+                        self.settings.bit_fee = Decimal(str(results[22]))
+                        self.settings.up_fee = Decimal(str(results[23]))
 
                         if not self.settings.highRisk :
                             self.settings.set_interval *= 2
@@ -311,24 +332,33 @@ class MyApi:
                     print(log_str)                 
             time.sleep(1)
 
-    def cutFloat(self, value, count):
-        if type(value) == str:
+    def changeDecimal(self,value, count):
+        if isinstance(value, str):
             try:
-                value = float(value)
+                value = Decimal(value)
             except ValueError:
-                value = 0  # 문자열을 float으로 변환할 수 없는 경우
+                value = Decimal('0')
         elif value is None:
-            value = 0
-            
-        value = round(value,9)
+            value = Decimal('0')
+        elif isinstance(value, (int, float)):
+            value = Decimal(str(value))
+        elif not isinstance(value, Decimal):
+            raise TypeError("Unsupported type for value")
 
-        return (int(value * 10**count) / 10**count)   
+        quantizer = Decimal('1.' + '0' * count)
+        result =  value.quantize(Decimal('1.' + '0' * count), rounding=ROUND_DOWN)
+        return result.normalize()
 
 
     async def info_message(self, market, trade_info, order_id, total_today):
            
         bot = telegram.Bot(token=self.settings.telegram)
-        chat_id = '6380176264'
+        if self.userinfo.memid == 1:
+            # 내꺼
+            chat_id = '6380176264'
+        elif self.userinfo.memid ==2:
+            # 명규꺼
+            chat_id = '5932188889'
 
         bit_coin = self.coinSet['bit']['coin_amount']
         bit_krw = self.coinSet['bit']['krw_price']
@@ -336,15 +366,15 @@ class MyApi:
         up_krw = self.coinSet['up']['krw_price']
         
         buy_order_id = trade_info.buy_id
-        buy_price = self.cutFloat(trade_info.buy_price,2)        
+        buy_price = self.changeDecimal(trade_info.buy_price,2)        
         buy_amount = trade_info.buy_amount
-        bought_amount = self.cutFloat(trade_info.bought_amount,8)
+        bought_amount = self.changeDecimal(trade_info.bought_amount,8)
         buy_remaining_amount = trade_info.buy_remaining_amount
         
         # sell_price는 매수 신청시 예상 판매금액, 실제 판매 된 금액은 sold_price
-        sell_price = self.cutFloat(trade_info.sell_price,2)
-        sold_price = self.cutFloat(trade_info.sold_price,2)
-        sold_amount = self.cutFloat(trade_info.sold_amount,8)
+        sell_price = self.changeDecimal(trade_info.sell_price,2)
+        sold_price = self.changeDecimal(trade_info.sold_price,2)
+        sold_amount = self.changeDecimal(trade_info.sold_amount,8)
         thread_id = trade_info.thread_id
 
         if market == 'bit':
@@ -354,15 +384,15 @@ class MyApi:
             buy_fee = self.settings.up_fee
             sell_fee = self.settings.bit_fee
 
-        fee = self.cutFloat(sold_price * sell_fee,5) + self.cutFloat(buy_price * buy_fee,5)
-        diff = self.cutFloat(sold_price - buy_price,3)
-        money = self.cutFloat(diff - fee,3)
+        fee = self.changeDecimal(sold_price * sell_fee,5) + self.changeDecimal(buy_price * buy_fee,5)
+        diff = self.changeDecimal(sold_price - buy_price,3)
+        money = self.changeDecimal(diff - fee,3)
         
         # sell_price는 매수 신청시 예상 판매금액, 실제 판매 된 금액은 sold_price
         estimated_diff = sell_price - buy_price
 
         # 대기 메시지가 왔을 때 넣은 차익. 이게 원래 차익이어야 하는데, 판매하면서 가격이 떨어지면 diff가 낮아짐.
-        got_money = self.cutFloat(money*sold_amount,2)
+        got_money = self.changeDecimal(money*sold_amount,2)
         
         log_str = f"[{thread_id}]차익발생,{market},수익:{got_money},차액:{money}({diff})매수:{buy_price},매도:{sold_price},수수료:{fee}, 매도량:[{sold_amount}/{bought_amount}],총 수익:{total_today}, bit_coin_amount:{bit_coin},bit_coin_amount:{up_coin},total_kwr:{int(bit_krw+up_krw)}, bit:{int(bit_krw)}, up:{int(up_krw)}, mode:{trade_info.isChange}"
         self.insertLog(log_str,thread_id,"차익발생")

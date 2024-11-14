@@ -99,14 +99,23 @@ class marketApiClass:
       print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]Request sendApi failed: {e}")
       return Res(success=False, error=str(e))
             
+  def send_coinlist(self,coin, state):
+    params = {
+      'currency': coin,
+      'state': state
+    }
 
+    # 최대 100개, 기본 100개이고, 페이지를 지정할 수 있는데. 페이지에는 100개씩 들어있겠지
+    # 페이지를 변경해가면서 읽어와서 오늘날짜나, 이번달까지인거를 찾아서 그때꺼까지 수량을 카운트 해야겠지.
+    
+    return self.sendApi('get', params, 'withdraws')
   
   def sell(self,thread_id,units):
     params = {
       'market': self.coin,
       'side': 'ask',
       'ord_type': 'market', #limit은 지정가, market 시장가. 대신 price 값을 null로 해야함.
-      'volume': units
+      'volume': str(units)
     }
 
     print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]{self.market}매도직전 ")
@@ -118,10 +127,10 @@ class marketApiClass:
   def sell_limit(self,units, price):
     params = {
       'market': self.coin,
-      'price' : price,
+      'price' : str(price),
       'side': 'ask',
       'ord_type': 'limit', #limit은 지정가, market 시장가. 대신 price 값을 null로 해야함.
-      'volume': units
+      'volume': str(units)
     }
     
     return self.sendApi('post', params, 'orders')
@@ -132,8 +141,8 @@ class marketApiClass:
       'market': self.coin,
       'side': 'bid',
       'ord_type': 'limit', #limit은 지정가, price 시장가. 대신 price 값을 null로 해야함.
-      'price': sell_value,
-      'volume': units
+      'price': str(sell_value),
+      'volume': str(units)
     }
 
     
