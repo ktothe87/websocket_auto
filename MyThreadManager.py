@@ -135,6 +135,24 @@ class MyThreadManager:
 
             return tot_buy_req_amount
     
+    def get_buy2_last_thread(self,market,buy1_price):
+        last_thread = 0 
+        count = 0
+        if self.active_thread_count > 0:
+                for key, trade_info in self.trade_list.items() :
+                    # 빗썸이면 업빗 오더는 스킵하고, 업빗이면 빗썸물량 스킵.
+                    if (market == 'bit' and not key.startswith('C')) or (market == 'up' and key.startswith('C')) :
+                        continue 
+                    
+                    if trade_info.buy_price > buy1_price and last_thread < trade_info.thread_id:
+                        count += 1
+                        if count > 1:
+                            last_thread = trade_info.thread_id
+
+        return last_thread
+
+
+    
     def stop_thread(self, order_id, thread_id=-1):
         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][MyApi]stop_threads 시작 {order_id}")
         if order_id in self.stop_events:

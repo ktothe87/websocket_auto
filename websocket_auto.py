@@ -25,7 +25,7 @@ elif len(sys.argv) < 3:
 else:
     memid = int(sys.argv[2])
 
-maxThread = 3
+maxThread = 5
 spairThread = 2
 
 coin = sys.argv[1].upper()
@@ -162,7 +162,7 @@ def SellToMarket(market, bought_order_id, thread_id, cp_trade_info):
     # 업비트 판매루틴 
     ####################33 여기 루프 걸어야하지 않나? 역방향에서는 했는데.     
     
-    log_str = f"[{thread_id}]{market_str[market]}매도신청:{cp_trade_info.buy_price}, bought_amount:{bought_amount}, 매수:{bought_order_id} ,{market}_coin_amount:{RealTime_coin[market]['coin_amount']}"
+    log_str = f"[{thread_id}]{market_str[market]}매도신청:{cp_trade_info.sell_price}, bought_amount:{bought_amount}, 매수:{bought_order_id} ,{market}_coin_amount:{RealTime_coin[market]['coin_amount']}"
     myApi.insertLog(log_str,thread_id, f"{market_str[market]}매도신청")
     
     res = marketApi[market].sell(thread_id,bought_amount)
@@ -295,12 +295,12 @@ def orderbook_message(ws,message, market):
                 market_event[market] = True
                 myThreadManager.orderbook_event.set()
 
-                log_str = f"[{myThreadManager.active_thread_count}/{myThreadManager.max_threads}]{market},{RealTime_coin.coin},{RealTime_coin['bit']['buy'][0]}, {RealTime_coin['up']['buy'][0]}, {RealTime_coin['bit']['buy_amount'][0]}, {RealTime_coin['up']['buy_amount'][0]}, {RealTime_coin.BitToUp_fee}, ||  ,{RealTime_coin.BitToUp_diff}({RealTime_coin.BitToUp_diff2}),   ,{RealTime_coin.UpToBit_diff}({RealTime_coin.UpToBit_diff2}), || , {RealTime_coin['bit']['buy'][1]},{RealTime_coin['bit']['buy_amount'][1]}, {RealTime_coin['up']['buy'][1]}, {RealTime_coin['up']['buy_amount'][1]}, total:{changeDecimal(RealTime_coin['bit']['coin_amount']+RealTime_coin['up']['coin_amount'],8)}, bit:{changeDecimal(RealTime_coin['bit']['coin_amount'],8)}, {'up'}:{changeDecimal(RealTime_coin['up']['coin_amount'],8)}, kwr:{changeDecimal(RealTime_coin[market]['krw_price']+RealTime_coin[r_market]['krw_price'],2)}, {'up'}:{int(RealTime_coin[market]['krw_price'])}, {r_market}:{int(RealTime_coin[r_market]['krw_price'])}, BitToUp:{coin_settings.BitToUp_comp_money_risk}, UpToBit:{coin_settings.UpToBit_comp_money_risk}, ori_buy:{({RealTime_coin['up']['ori_buy']})}"
+                log_str = f"[{myThreadManager.active_thread_count}/{myThreadManager.max_threads}]{market},{RealTime_coin.coin},{RealTime_coin['bit']['buy'][0]}, {RealTime_coin['up']['buy'][0]}, {RealTime_coin['bit']['buy_amount'][0]}, {RealTime_coin['up']['buy_amount'][0]}, {RealTime_coin.BitToUp_fee}, ||  ,{RealTime_coin.BitToUp_diff}({RealTime_coin.BitToUp_diff2}),   ,{RealTime_coin.UpToBit_diff}({RealTime_coin.UpToBit_diff2}), || , {RealTime_coin['bit']['buy'][1]},{RealTime_coin['bit']['buy_amount'][1]}, {RealTime_coin['up']['buy'][1]}, {RealTime_coin['up']['buy_amount'][1]}, total:{changeDecimal(RealTime_coin['bit']['coin_amount']+RealTime_coin['up']['coin_amount'],8)}, bit:{changeDecimal(RealTime_coin['bit']['coin_amount'],8)}, {'up'}:{changeDecimal(RealTime_coin['up']['coin_amount'],8)}, kwr:{changeDecimal(RealTime_coin['bit']['krw_price']+RealTime_coin['up']['krw_price'],2)}, bit:{int(RealTime_coin['bit']['krw_price'])}, up:{int(RealTime_coin['up']['krw_price'])}, BitToUp:{coin_settings.BitToUp_comp_money_risk}, UpToBit:{coin_settings.UpToBit_comp_money_risk}"
                 myApi.insertLog(log_str)
             
-        elif item.get('status'):
-            log_str = f"{market} orderbook :{item}"
-            myApi.insertLog(log_str,-1,'status')
+        elif item.get('status'): 
+            #log_str = f"{market} orderbook :{item}"
+            #myApi.insertLog(log_str,-1,'status')
             ws_msg = "PING"
             ws.send(ws_msg)
         else:
@@ -344,6 +344,7 @@ def escapeCheck(market, thread_id, order_id, stop_event):
 
         goExit = False
         log_str = ""
+        buy2_thread_id = 0
 
         if not stop_event.is_set() :
             # 이거 여기다 안하면 프로그램 종료되었을 때 다음 시세데이터가 올 때까지 기다리게 됨.
@@ -360,6 +361,8 @@ def escapeCheck(market, thread_id, order_id, stop_event):
                 r_diff = RealTime_coin[r_market]['buy'][0] - RealTime_coin[r_market]['buy'][1]
                 buy_amount = RealTime_coin[r_market]['buy_amount'][0] - myThreadManager.get_total_units(market,order_id)
                 last_index = last_profitable_index( trade_info.buy_price, RealTime_coin[r_market]['buy'])
+                buy2_thread_id = myThreadManager.get_buy2_last_thread(market, RealTime_coin[r_market]['buy'][0])
+
                 if last_index < 0 :
                     if market =='up':
                         #역방향
@@ -388,10 +391,20 @@ def escapeCheck(market, thread_id, order_id, stop_event):
                 if trade_info is None :
                     stop_event.set()
                     print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}][{thread_id}]{market_str[market]}trade_info is None")
+                # 매수2 마지막 쓰레드인데, 현재 매수신청한 양이 매도쪽 마켓에 남은 물량보다 적은 경우. 
+                # 전체 쓰레드 중에서 내가 빠지는게 아니고, 매수2 들어있는 쓰레드 중에서 마지막 쓰레드가 빠짐.
+                elif buy2_thread_id == trade_info.thread_id and RealTime_coin[r_market]['buy_amount'][0] < myThreadManager.get_total_units(market) :
+                    log_str = f"매수2 마지막 쓰레드 취소"
                 # 내가 매수신청해서 매수되고 남은 수량보다, 매수마켓쪽 수량이 더 적으면 수량부족이니까 탈출.
                 elif buy_amount < trade_info.buy_remaining_amount:
-                    log_str = f"최종적으로 수량 부족으로 탈출. {market_str[r_market]}매수2차익:{changeDecimal(RealTime_coin[r_market]['buy'][1] - trade_info.buy_price,2)}, BitToUp:{coin_settings.BitToUp_comp_money_risk}, UpToBit:{coin_settings.UpToBit_comp_money_risk}, 남은매수/신청매수:{trade_info.buy_remaining_amount}/{trade_info.buy_amount}, buy_amount:{buy_amount}, get_total_units:{myThreadManager.get_total_units(market, order_id)}, up_buy1_amount:{RealTime_coin[r_market]['buy_amount'][0]}, up_buy2_amount:{RealTime_coin[r_market]['buy_amount'][1]}"
-                    goExit = True
+                    # 내가 탈출해야 하는 상황이지만, 매수2에 들어있는 쓰레드가 있으면 그걸 먼저 탈출 시킴. 
+                    # buy2_thread_id == 0 이라는건 매수2에 대기하고 있는 쓰레드가 없다는 것, 즉 내가 탈출해야 함.
+                    if buy2_thread_id == 0:
+                        log_str = f"최종적으로 수량 부족으로 탈출. {market_str[r_market]}매수2차익:{changeDecimal(RealTime_coin[r_market]['buy'][1] - trade_info.buy_price,2)}, BitToUp:{coin_settings.BitToUp_comp_money_risk}, UpToBit:{coin_settings.UpToBit_comp_money_risk}, 남은매수/신청매수:{trade_info.buy_remaining_amount}/{trade_info.buy_amount}, buy_amount:{buy_amount}, get_total_units:{myThreadManager.get_total_units(market, order_id)}, up_buy1_amount:{RealTime_coin[r_market]['buy_amount'][0]}, up_buy2_amount:{RealTime_coin[r_market]['buy_amount'][1]}, buy2_thread_id:{buy2_thread_id}"
+                        goExit = True
+                    else:
+                        log_str = f"매수2에 대기하고 있는 쓰레드가 있어서 대신 탈출 안함. 매수2 쓰레드 탈출 되야 함. buy2_thread_id:{buy2_thread_id}"
+                    
                 elif (trade_info.buy_remaining_amount * RealTime_coin[r_market]['buy'][0]) < 6000:
                     log_str = f"매수하고 남은 양이 너무 적음. 매수되버리면 짜투리 됨 {trade_info.buy_remaining_amount}"
                     goExit = True
@@ -488,8 +501,8 @@ def parseMyOrder(ws,message,market):
 
     # 메시지 유형에 따라 처리
     if parsed_data.get('status') =='UP':
-        log_str = f"{market} CheckMyOrder Status: UP"
-        myApi.insertLog(log_str,-1,'status')   
+        #log_str = f"{market} CheckMyOrder Status: UP"
+        #myApi.insertLog(log_str,-1,'status')   
         ws_msg = "PING"
         ws.send(ws_msg)
     
@@ -714,7 +727,7 @@ def parseMyOrder(ws,message,market):
                         asyncio.run(myApi.info_message(r_market, cp_trade_info, order_id, total_today))
 
             except Exception as e: 
-                log_str = f"myOrder error:{order_id}, {parsed_data}, e:Type({type(e)}), Message({getattr(e, 'message', 'No message')})"
+                log_str = f"myOrder error:{order_id}, {parsed_data}, e:Type({type(e)}), Message({str(e)}))"
                 print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
                 myApi.insertLog(log_str,thread_id,"error")
         
@@ -995,25 +1008,25 @@ def gethighRiskValue(market):
 
     temp_buy1 = RealTime_coin[market]['buy'][0]
     if temp_buy1 < 0.0001:
-        highRiskValue = 0.00000001
+        highRiskValue = Decimal('0.00000001')
     elif temp_buy1 < 0.001:
-        highRiskValue = 0.0000001
+        highRiskValue = Decimal('0.0000001')
     elif temp_buy1 < 0.01:
-        highRiskValue = 0.000001
+        highRiskValue = Decimal('0.000001')
     elif temp_buy1 < 0.1:
-        highRiskValue = 0.00001
+        highRiskValue = Decimal('0.00001')
     elif temp_buy1 < 1:
-        highRiskValue = 0.0001
+        highRiskValue = Decimal('0.0001')
     elif temp_buy1 < 10:
-        highRiskValue = 0.001
+        highRiskValue = Decimal('0.001')
     elif temp_buy1 < 100:
-        highRiskValue = 0.01
+        highRiskValue = Decimal('0.01')
     elif temp_buy1 < 1000:
         # 업비트는 원래 0.1원인데 일부 코인만 1원으로 하고 있음.
         if market == 'bit' or (market == 'up' and (coin in up_coinList)):
             highRiskValue = 1
         else:
-            highRiskValue = 0.1
+            highRiskValue = Decimal('0.1')
     elif temp_buy1 < 10000:
         highRiskValue = 1
     elif temp_buy1 < 100000:
@@ -1036,8 +1049,8 @@ while(myThreadManager.program_run):
         # 따라서 이 때는 이벤트 대기를 하면 안됨.
         if current_time == datetime(1,1,1, second=0) :
             # startTime = time.time()
-            log_str = f"[{temp_thread_id}]myThreadManager.orderbook_event.wait():{current_time}"
-            myApi.insertLog(log_str,temp_thread_id,"temp")
+            #log_str = f"[{temp_thread_id}]myThreadManager.orderbook_event.wait():{current_time}"
+            #myApi.insertLog(log_str,temp_thread_id,"temp")
             # endTime = time.time()
             # latency = endTime - startTime
             # print(f"[DB추가시간]Latency: {latency} seconds")
@@ -1092,7 +1105,7 @@ while(myThreadManager.program_run):
 
     isSendCoinOver = False
 
-
+    #print(f"{RealTime_coin.BitToUp_diff}, {coin_settings.BitToUp_comp_money_risk}")
 ### 원래는 업빗매수1, 물량 등등이 바뀌면 시간을 초기화해야 원래 취지에 맞음.
 ### 다 확인하기에는 좀 많은데, 이것도 모드에 따라서 해야 하나? 일반모드였으면 빗썸매도1 변경하는지 본다거나.
 ############################
@@ -1101,6 +1114,8 @@ while(myThreadManager.program_run):
         # 직전 상황이 역방향 체크였으면, 체크중이던 시간을 초기화 해야함
         # 역방향에서 시간체크를 위해서 슬립걸리고 다시 내려왔을 때 상황이 정방향이 되었을 때
         # 시간이 역방향께 남아 있어서 그 상태로 진행되버리는 경우가 발생할 수 있음
+        #print("정방향")
+
         if current_market =='up':
             current_time = datetime(1,1,1, second=0)
 
@@ -1114,6 +1129,8 @@ while(myThreadManager.program_run):
         # 직전 상황이 역방향 체크였으면, 체크중이던 시간을 초기화 해야함
         # 역방향에서 시간체크를 위해서 슬립걸리고 다시 내려왔을 때 상황이 정방향이 되었을 때
         # 시간이 역방향께 남아 있어서 그 상태로 진행되버리는 경우가 발생할 수 있음
+        #print("역방향")
+        
         if current_market =='bit':
             current_time = datetime(1,1,1, second=0)
         

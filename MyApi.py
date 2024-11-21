@@ -5,7 +5,8 @@ import telegram
 import psycopg2
 from dataclasses import dataclass, field
 from typing import Dict, Any
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal, ROUND_DOWN, InvalidOperation
+
 
 class MyApi:
     @dataclass
@@ -200,29 +201,29 @@ class MyApi:
             self.insertLog(log_str)
             print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
 
+        while(True):
+            sql = f"SELECT memid, coin, SUM(money) AS total_money FROM public.tradeinfo_view WHERE memid = {self.userinfo.memid} AND coin = '{self.coin}' AND DATE(created_at) = CURRENT_DATE GROUP BY memid, coin"
 
-        sql = f"SELECT memid, coin, SUM(money) AS total_money FROM public.tradeinfo_view WHERE memid = {self.userinfo.memid} AND coin = '{self.coin}' AND DATE(created_at) = CURRENT_DATE GROUP BY memid, coin"
-
-        try :
-            self.cur.execute(sql)
-        except Exception as e:
-            log_str = f"[{trade_info.thread_id}]error insertTradeInfo  View get total_today 오류 발생1: {e}, sql:{sql}"
-            self.insertLog(log_str)
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
-
-        try :
-            results = self.cur.fetchone()
-            if results is None:
-                log_str = f"[{trade_info.thread_id}]error insertTradeInfo  View None : sql:{sql}"
+            try :
+                self.cur.execute(sql)
+            except Exception as e:
+                log_str = f"[{trade_info.thread_id}]error insertTradeInfo  View get total_today 오류 발생1: {e}, sql:{sql}"
                 self.insertLog(log_str)
                 print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
-            else:
-                return (float(results[2]))
 
-        except Exception as e:
-            log_str = f'[{trade_info.thread_id}]error insertTradeInfo  View get total_today 오류 발생2 results:{results}, sql:{sql}, e:{e}'
-            self.insertLog(log_str)
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")    
+            try :
+                results = self.cur.fetchone()
+                if not results:
+                    log_str = f"[{trade_info.thread_id}]error insertTradeInfo  View None : results:{results}, sql:{sql}"
+                    self.insertLog(log_str)
+                    print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")
+                else:
+                    return (float(results[2]))
+
+            except Exception as e:
+                log_str = f'[{trade_info.thread_id}]error insertTradeInfo  View get total_today 오류 발생2 results:{results}, sql:{sql}, e:{e}'
+                self.insertLog(log_str)
+                print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]{log_str}")    
 
     def load_settings(self):
         while(True):
@@ -332,22 +333,23 @@ class MyApi:
                     print(log_str)                 
             time.sleep(1)
 
-    def changeDecimal(self,value, count):
-        if isinstance(value, str):
-            try:
-                value = Decimal(value)
-            except ValueError:
-                value = Decimal('0')
-        elif value is None:
-            value = Decimal('0')
-        elif isinstance(value, (int, float)):
-            value = Decimal(str(value))
-        elif not isinstance(value, Decimal):
-            raise TypeError("Unsupported type for value")
 
-        quantizer = Decimal('1.' + '0' * count)
-        result =  value.quantize(Decimal('1.' + '0' * count), rounding=ROUND_DOWN)
-        return result.normalize()
+
+    def changeDecimal(self, value, count):
+        try:
+            if isinstance(value, str):
+                value = Decimal(value)
+            elif value is None:
+                value = Decimal('0')
+            elif isinstance(value, (int, float)):
+                value = Decimal(str(value))  # float을 직접 변환하는 대신 문자열로 변환
+            elif not isinstance(value, Decimal):
+                raise TypeError("Unsupported type for value")
+
+            result = value.quantize(Decimal('1.' + '0' * count), rounding=ROUND_DOWN)
+            return result.normalize()
+        except (InvalidOperation, ValueError):
+            return Decimal('0').quantize(Decimal('1.' + '0' * count))
 
 
     async def info_message(self, market, trade_info, order_id, total_today):
